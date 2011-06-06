@@ -42,7 +42,7 @@ public class WebPageLoaderFactory extends JavaScriptLoaderFactory {
               context.currentScope().getConstantValue(name);
               doIsFieldDefined(context, isDefined, windowVal, Ast.makeConstant(name));
               context.cfg().addInstruction(
-                  insts.ConditionalBranchInstruction(
+                  insts.ConditionalBranchInstruction(context.cfg().getCurrentInstruction(),
                       translateConditionOpcode(CAstOperator.OP_NE), 
                       null, 
                       isDefined, 
@@ -51,15 +51,15 @@ public class WebPageLoaderFactory extends JavaScriptLoaderFactory {
               
               // field lookup of value
               context.cfg().newBlock(true);
-              context.cfg().addInstruction(((JSInstructionFactory) insts).GetInstruction(result, windowVal, name));
-              context.cfg().addInstruction(insts.GotoInstruction());
+              context.cfg().addInstruction(((JSInstructionFactory) insts).GetInstruction(context.cfg().getCurrentInstruction(), result, windowVal, name));
+              context.cfg().addInstruction(insts.GotoInstruction(context.cfg().getCurrentInstruction()));
               PreBasicBlock trueB = context.cfg().getCurrentBlock();
 
               // read global
               context.cfg().newBlock(false);
               PreBasicBlock falseB = context.cfg().getCurrentBlock();
               int sr = super.doGlobalRead(n, context, name);
-              context.cfg().addInstruction(((JSInstructionFactory) insts).AssignInstruction(result, sr));
+              context.cfg().addInstruction(((JSInstructionFactory) insts).AssignInstruction(context.cfg().getCurrentInstruction(), result, sr));
 
               // end
               context.cfg().newBlock(true);
@@ -79,7 +79,7 @@ public class WebPageLoaderFactory extends JavaScriptLoaderFactory {
             if (isScriptBody(context)) {
               int windowVal = super.doLocalRead(context, "this");
               context.currentScope().getConstantValue(nm);
-              context.cfg().addInstruction(((JSInstructionFactory) insts).PutInstruction(windowVal, rval, nm));
+              context.cfg().addInstruction(((JSInstructionFactory) insts).PutInstruction(context.cfg().getCurrentInstruction(), windowVal, rval, nm));
             } 
             
             super.doLocalWrite(context, nm, rval);
