@@ -17,7 +17,7 @@ import java.util.Set;
 
 import com.ibm.wala.analysis.reflection.ReflectionContextInterpreter;
 import com.ibm.wala.cast.ipa.callgraph.AstCallGraph.AstCGNode;
-import com.ibm.wala.cast.ipa.callgraph.LexicalScopingResolverContexts.Resolver;
+import com.ibm.wala.cast.ipa.callgraph.LexicalScopingResolverContexts.LexicalScopingResolver;
 import com.ibm.wala.cast.ipa.callgraph.ScopeMappingInstanceKeys.ScopeMappingInstanceKey;
 import com.ibm.wala.cast.ir.ssa.AbstractLexicalInvoke;
 import com.ibm.wala.cast.ir.ssa.AstAssertInstruction;
@@ -39,7 +39,6 @@ import com.ibm.wala.cast.loader.AstMethod;
 import com.ibm.wala.cast.loader.AstMethod.LexicalInformation;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
-import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.fixpoint.AbstractOperator;
 import com.ibm.wala.fixpoint.IntSetVariable;
 import com.ibm.wala.fixpoint.UnaryOperator;
@@ -47,6 +46,7 @@ import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
+import com.ibm.wala.ipa.callgraph.impl.Everywhere;
 import com.ibm.wala.ipa.callgraph.impl.ExplicitCallGraph;
 import com.ibm.wala.ipa.callgraph.propagation.AbstractFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
@@ -69,12 +69,9 @@ import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAPutInstruction;
 import com.ibm.wala.ssa.SymbolTable;
-import com.ibm.wala.util.collections.EmptyIterator;
 import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.debug.Assertions;
-import com.ibm.wala.util.functions.Function;
-import com.ibm.wala.util.graph.traverse.NumberedDFSDiscoverTimeIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetAction;
 import com.ibm.wala.util.intset.IntSetUtil;
@@ -311,12 +308,13 @@ public abstract class AstSSAPropagationCallGraphBuilder extends SSAPropagationCa
     }
 
     private boolean checkLexicalInstruction(AstLexicalAccess instruction) {
-      Resolver r = (Resolver)node.getContext().get(LexicalScopingResolverContexts.RESOLVER);
+      LexicalScopingResolver r = (LexicalScopingResolver)node.getContext().get(LexicalScopingResolverContexts.RESOLVER);
       if (r == null) {
         return false;
       } else {
         for(Access a : instruction.getAccesses()) {
-          if (r.getLexicalSites(a) == null) {
+          Pair<String,String> name = a.getName();
+          if ((r.isReadOnly(name)? r.getReadOnlyValue(name): r.getLexicalSites(name)) == null) {
             return false;
           }
         }
@@ -595,7 +593,7 @@ public abstract class AstSSAPropagationCallGraphBuilder extends SSAPropagationCa
        * .
        */
       private void doLexicalPointerKeys(boolean funargsOnly) {
-        Resolver r = (Resolver)node.getContext().get(LexicalScopingResolverContexts.RESOLVER);
+        LexicalScopingResolver r = (LexicalScopingResolver)node.getContext().get(LexicalScopingResolverContexts.RESOLVER);
         for (int i = 0; i < accesses.length; i++) {
           final String name = accesses[i].variableName;
           final String definer = accesses[i].variableDefiner;
@@ -604,20 +602,30 @@ public abstract class AstSSAPropagationCallGraphBuilder extends SSAPropagationCa
           if (AstTranslator.DEBUG_LEXICAL)
             System.err.println(("looking up lexical parent " + definer));
 
-          Iterator<Pair<CallSiteReference,CGNode>> sites;
-          if (r != null && (sites = r.getLexicalSites(accesses[i])) != null) {
+          boolean foundOnStack = false;
+          if (r != null) {
             if (! funargsOnly) {
-              while(sites.hasNext()) {
-                Pair<CallSiteReference,CGNode> x = sites.next();
-                PointerKey V = 
-                  isLoad ? getLocalReadKey(x.snd, x.fst, name, definer) : getLocalWriteKey(x.snd, x.fst, name, definer);
+              if (r.isReadOnly(accesses[i].getName())) {
+                assert isLoad;
+                foundOnStack = true;
+                action(r.getReadOnlyValue(accesses[i].getName()), vn);
+              } else {
+                Iterator<Pair<CallSiteReference,CGNode>> sites = r.getLexicalSites(accesses[i].getName());
+                while(sites.hasNext()) {
+                  Pair<CallSiteReference,CGNode> x = sites.next();
+                  PointerKey V = 
+                    isLoad ? getLocalReadKey(x.snd, x.fst, name, definer) : getLocalWriteKey(x.snd, x.fst, name, definer);
 
                   if (V != null) {
+                    foundOnStack = true;
                     action(V, vn);
                   }
-              } 
+                }
+              }
             }
-          } else {
+          } 
+          
+          if (! foundOnStack) {
             Set<CGNode> creators = getLexicalDefiners(node, Pair.make(name, definer));
             for(CGNode n : creators) {
               PointerKey funargKey = handleRootLexicalReference(name, definer, n);
@@ -944,7 +952,8 @@ public abstract class AstSSAPropagationCallGraphBuilder extends SSAPropagationCa
             // TODO: only values[i] uses need to be re-done.
             ir.lexicalInfo().handleAlteration();
             ((AstCallGraph.AstCGNode) n).setLexicallyMutatedIR(ir);
-            getAnalysisCache().getSSACache().invalidateDU(AstM, n.getContext());
+            getAnalysisCache().getSSACache().invalidate(AstM, n.getContext());
+            getAnalysisCache().getSSACache().invalidate(AstM, Everywhere.EVERYWHERE);
             getBuilder().markChanged(n);
 
             // get SSA-renamed def from call site instruction
@@ -1078,12 +1087,14 @@ public abstract class AstSSAPropagationCallGraphBuilder extends SSAPropagationCa
     private void newFieldFullOperation(final boolean isLoadOperation, final ReflectedFieldAction action, PointerKey objKey,
         final PointerKey fieldKey) {
       system.newSideEffect(new AbstractOperator<PointsToSetVariable>() {
+        private final MutableIntSet doneReceiver = IntSetUtil.make();
+        private final MutableIntSet doneField = IntSetUtil.make();
         public byte evaluate(PointsToSetVariable lhs, final PointsToSetVariable[] rhs) {
           final IntSetVariable receivers = (IntSetVariable) rhs[0];
           final IntSetVariable fields = (IntSetVariable) rhs[1];
           if (receivers.getValue() != null && fields.getValue() != null) {
             receivers.getValue().foreach(new IntSetAction() {
-              public void act(int rptr) {
+              public void act(final int rptr) {
                 final InstanceKey receiver = system.getInstanceKey(rptr);
 
                 if (!isLoadOperation) {
@@ -1095,18 +1106,25 @@ public abstract class AstSSAPropagationCallGraphBuilder extends SSAPropagationCa
 
                 fields.getValue().foreach(new IntSetAction() {
                   public void act(int fptr) {
-                    InstanceKey field = system.getInstanceKey(fptr);
-                    for (Iterator keys = isLoadOperation ? getPointerKeysForReflectedFieldRead(receiver, field)
-                        : getPointerKeysForReflectedFieldWrite(receiver, field); keys.hasNext();) {
-                      AbstractFieldPointerKey key = (AbstractFieldPointerKey) keys.next();
-                      if (DEBUG_PROPERTIES)
-                        action.dump(key, false, false);
-                      action.action(key);
+                    if (!doneField.contains(fptr) || !doneReceiver.contains(rptr)) {
+                      InstanceKey field = system.getInstanceKey(fptr);
+                      for (Iterator keys = isLoadOperation ? 
+                              getPointerKeysForReflectedFieldRead(receiver, field)
+                              : getPointerKeysForReflectedFieldWrite(receiver, field); 
+                           keys.hasNext();) 
+                      {
+                        AbstractFieldPointerKey key = (AbstractFieldPointerKey) keys.next();
+                        if (DEBUG_PROPERTIES)
+                          action.dump(key, false, false);
+                        action.action(key);
+                      }
                     }
                   }
                 });
               }
             });
+            doneReceiver.addAll(receivers.getValue());
+            doneField.addAll(fields.getValue());
           }
 
           return NOT_CHANGED;
