@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.ibm.wala.cast.test"/>
+	<classpathentry kind="src" path="/com.ibm.wala.core.tests"/>
+	<classpathentry kind="src" path="/com.ibm.wala.util"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/edu.kit.wala.smali"/>
+	<classpathentry kind="src" path="/com.ibm.wala.core"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/baksmali"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/util"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
