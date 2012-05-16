@@ -10,5 +10,6 @@
 	<classpathentry kind="src" path="/com.ibm.wala.core"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/baksmali"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/util"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/dexlib"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
