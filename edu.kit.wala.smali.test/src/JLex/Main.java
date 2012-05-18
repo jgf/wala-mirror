@@ -174,13 +174,9 @@ package JLex;
 /***************************************************************
   Imported Packages
   **************************************************************/
-import java.lang.System;
-import java.lang.Integer;
-import java.lang.Character;
-
 import java.util.Enumeration;
-import java.util.Stack;
 import java.util.Hashtable;
+import java.util.Stack;
 import java.util.Vector;
 
 /******************************
