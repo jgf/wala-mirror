@@ -1,5 +1,7 @@
 package edu.kit.wala.smali.test.basic;
 
+import java.io.FileNotFoundException;
+
 import org.jf.baksmali.Interface.BakSmaliAnalysis;
 import org.jf.dexlib.Interface.DexAnalysis.DexAnalysisException;
 import org.jf.dexlib.Interface.DexProgram;
@@ -11,10 +13,13 @@ import org.jf.dexlib.Interface.DexProgram;
  */
 public class CallBakSmaliAnalysis {
 	
-	public static void main(final String[] args) throws DexAnalysisException {
+	public static void main(final String[] args) throws DexAnalysisException, FileNotFoundException {
 		System.out.println("========= BAKSMALI =========");
 		final DexProgram bakSmaliProg = testBakSmali();
 		DexAnalysisUtil.printProgram(bakSmaliProg);
+		System.out.print("Dumping graphs... ");
+		DexAnalysisUtil.dumpGraphsTo(bakSmaliProg, "./out/baksmali/");
+		System.out.println("done.");
 	}
 
 	private static DexProgram testBakSmali() throws DexAnalysisException {

@@ -1,5 +1,8 @@
 package edu.kit.wala.smali.test.basic;
 
+import java.io.FileNotFoundException;
+
+import org.jf.dexlib.Code.Analysis.graphs.GraphDumper;
 import org.jf.dexlib.Interface.DexClass;
 import org.jf.dexlib.Interface.DexMethod;
 import org.jf.dexlib.Interface.DexProgram;
@@ -46,4 +49,12 @@ public class DexAnalysisUtil {
 			}
 		}
 	}
+	
+	public static void dumpGraphsTo(final DexProgram dexProg, final String toDir) throws FileNotFoundException {
+		final GraphDumper gDumpNoExc = new GraphDumper(toDir, "no-exc-", true, true, true, false);
+		dexProg.dumpGraphs(gDumpNoExc);
+		final GraphDumper gDumpWithExc = new GraphDumper(toDir, "with-exc-", true, true, true, true);
+		dexProg.dumpGraphs(gDumpWithExc);
+	}
+
 }
