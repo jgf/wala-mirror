@@ -477,10 +477,10 @@ public class XMLMethodSummaryReader implements BytecodeConstants {
         int defNum = nextLocal;
         symbolTable.put(defVar, new Integer(nextLocal++));
 
-        governingMethod.addStatement(insts.InvokeInstruction(defNum, params, exceptionValue, site));
+        governingMethod.addStatement(insts.InvokeInstruction(governingMethod.getNumberOfStatements(), defNum, params, exceptionValue, site));
       } else {
         // ignore return value, if any
-        governingMethod.addStatement(insts.InvokeInstruction(params, exceptionValue, site));
+        governingMethod.addStatement(insts.InvokeInstruction(governingMethod.getNumberOfStatements(), params, exceptionValue, site));
       }
     }
 
@@ -524,9 +524,9 @@ public class XMLMethodSummaryReader implements BytecodeConstants {
             type.getDerivedMask()==ArrayMask || 
             // array of primitives
             type.getDerivedMask()==((ArrayMask<<ElementBits)|PrimitiveMask));  
-        a = insts.NewInstruction(defNum, ref, new int[] { sNumber.intValue() });
+        a = insts.NewInstruction(governingMethod.getNumberOfStatements(), defNum, ref, new int[] { sNumber.intValue() });
       } else {
-        a = insts.NewInstruction(defNum, ref);
+        a = insts.NewInstruction(governingMethod.getNumberOfStatements(), defNum, ref);
       }
       governingMethod.addStatement(a);
     }
@@ -550,7 +550,7 @@ public class XMLMethodSummaryReader implements BytecodeConstants {
         Assertions.UNREACHABLE("Cannot lookup value: " + V);
       }
 
-      SSAThrowInstruction T = insts.ThrowInstruction(valueNumber.intValue());
+      SSAThrowInstruction T = insts.ThrowInstruction(governingMethod.getNumberOfStatements(), valueNumber.intValue());
       governingMethod.addStatement(T);
     }
 
@@ -596,7 +596,7 @@ public class XMLMethodSummaryReader implements BytecodeConstants {
         Assertions.UNREACHABLE("Cannot lookup ref: " + R);
       }
 
-      SSAGetInstruction G = insts.GetInstruction(defNum, refNumber.intValue(), field);
+      SSAGetInstruction G = insts.GetInstruction(governingMethod.getNumberOfStatements(), defNum, refNumber.intValue(), field);
       governingMethod.addStatement(G);
     }
 
@@ -641,7 +641,7 @@ public class XMLMethodSummaryReader implements BytecodeConstants {
         Assertions.UNREACHABLE("Cannot lookup ref: " + R);
       }
 
-      SSAPutInstruction P = insts.PutInstruction(refNumber.intValue(), valueNumber.intValue(), field);
+      SSAPutInstruction P = insts.PutInstruction(governingMethod.getNumberOfStatements(), refNumber.intValue(), valueNumber.intValue(), field);
       governingMethod.addStatement(P);
     }
 
@@ -675,7 +675,7 @@ public class XMLMethodSummaryReader implements BytecodeConstants {
       if (valueNumber == null) {
         Assertions.UNREACHABLE("Cannot lookup value: " + V);
       }
-      SSAPutInstruction P = insts.PutInstruction(valueNumber.intValue(), field);
+      SSAPutInstruction P = insts.PutInstruction(governingMethod.getNumberOfStatements(), valueNumber.intValue(), field);
       governingMethod.addStatement(P);
     }
 
@@ -709,7 +709,7 @@ public class XMLMethodSummaryReader implements BytecodeConstants {
       if (valueNumber == null) {
         Assertions.UNREACHABLE("Cannot lookup value: " + V);
       }
-      SSAArrayStoreInstruction S = insts.ArrayStoreInstruction(refNumber.intValue(), 0, valueNumber.intValue(),
+      SSAArrayStoreInstruction S = insts.ArrayStoreInstruction(governingMethod.getNumberOfStatements(), refNumber.intValue(), 0, valueNumber.intValue(),
           TypeReference.JavaLangObject);
       governingMethod.addStatement(S);
     }
@@ -726,7 +726,7 @@ public class XMLMethodSummaryReader implements BytecodeConstants {
       if (governingMethod.getReturnType() != null) {
         String retV = atts.getValue(A_VALUE);
         if (retV == null) {
-          SSAReturnInstruction R = insts.ReturnInstruction();
+          SSAReturnInstruction R = insts.ReturnInstruction(governingMethod.getNumberOfStatements());
           governingMethod.addStatement(R);
         } else {
           Integer valueNumber = symbolTable.get(retV);
@@ -742,7 +742,7 @@ public class XMLMethodSummaryReader implements BytecodeConstants {
             }
           }
           boolean isPrimitive = governingMethod.getReturnType().isPrimitiveType();
-          SSAReturnInstruction R = insts.ReturnInstruction(valueNumber.intValue(), isPrimitive);
+          SSAReturnInstruction R = insts.ReturnInstruction(governingMethod.getNumberOfStatements(), valueNumber.intValue(), isPrimitive);
           governingMethod.addStatement(R);
         }
       }
