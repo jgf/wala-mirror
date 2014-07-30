@@ -57,12 +57,26 @@ public class AnalysisScopeReader {
       FileProvider fp) throws IOException {
     BufferedReader r = null;
     try {
-      InputStream scopeFileInputStream = fp.getInputStreamFromClassLoader(scopeFileName, javaLoader);
+      // Now reading from jar is included in WALA, but we can't use their version, because they load from
+      // jar by default and use filesystem as fallback. We want it the other way round. E.g. to deliver default
+      // configuration files with the jar, but use userprovided ones if present in the working directory.
+      // InputStream scopeFileInputStream = fp.getInputStreamFromClassLoader(scopeFileName, javaLoader);
+      File scopeFile = new File(scopeFileName);
 
       String line;
       // assume the scope file is UTF-8 encoded; ASCII files will also be handled properly
       // TODO allow specifying encoding as a parameter?
-      r = new BufferedReader(new InputStreamReader(scopeFileInputStream, "UTF-8"));
+      if (scopeFile.exists()) {
+        r = new BufferedReader(new InputStreamReader(new FileInputStream(scopeFile), "UTF-8"));
+      } else {
+        // try to read from jar
+        InputStream inFromJar = scope.getClass().getClassLoader().getResourceAsStream(scopeFileName);
+        if (inFromJar == null) {
+            throw new IllegalArgumentException("Unable to retreive " + scopeFileName + " from the jar using the loader of " + 
+                    scope.getClass());
+        }
+        r = new BufferedReader(new InputStreamReader(inFromJar));
+      }
       while ((line = r.readLine()) != null) {
         processScopeDefLine(scope, javaLoader, line);
       }
