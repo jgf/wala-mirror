@@ -214,8 +214,7 @@ public class PropagationSystem extends DefaultFixedPointSolver<PointsToSetVariab
    */
   List<InstanceKey> getInstances(IntSet set) {
     LinkedList<InstanceKey> result = new LinkedList<InstanceKey>();
-    int i = 0;
-    for (IntIterator it = set.intIterator(); it.hasNext(); i++) {
+    for (IntIterator it = set.intIterator(); it.hasNext();) {
       int j = it.next();
       result.add(getInstanceKey(j));
     }
@@ -238,8 +237,10 @@ public class PropagationSystem extends DefaultFixedPointSolver<PointsToSetVariab
     if (key instanceof LocalPointerKey) {
       LocalPointerKey lpk = (LocalPointerKey) key;
       if (lpk.isParameter()) {
-        System.err.println(lpk);
+        System.err.println("------------------ ERROR:");
+        System.err.println("LocalPointerKey: " + lpk);
         System.err.println("Constant? " + lpk.getNode().getIR().getSymbolTable().isConstant(lpk.getValueNumber()));
+        System.err.println("   -- IR:");
         System.err.println(lpk.getNode().getIR());
         Assertions.UNREACHABLE("How can parameter be implicit?");
       }

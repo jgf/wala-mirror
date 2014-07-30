@@ -657,7 +657,7 @@ public class JavaScriptLoader extends CAstAbstractModuleLoader {
 
     @Override
     public PrimitiveType getPrimitive(TypeReference reference) {
-      return JSPrimitiveType.getPrimitive(reference);
+      return PrimitiveType.getPrimitive(reference);
     }
 
     @Override
