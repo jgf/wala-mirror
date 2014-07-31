@@ -379,7 +379,13 @@ public class ExplodedControlFlowGraph implements ControlFlowGraph<SSAInstruction
 
   @Override
   public boolean hasEdge(IExplodedBasicBlock src, IExplodedBasicBlock dst) throws UnimplementedError {
-    Assertions.UNREACHABLE();
+    for (Iterator<IExplodedBasicBlock> it = getSuccNodes(src); it.hasNext();) {
+      IExplodedBasicBlock succ = it.next();
+      if (succ == dst) {
+        return true;
+      }
+    }
+    
     return false;
   }
 
