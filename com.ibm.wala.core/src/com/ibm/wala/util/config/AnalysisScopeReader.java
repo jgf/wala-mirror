@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.StringTokenizer;
 import java.util.jar.JarFile;
+import java.net.URI;
 
 import com.ibm.wala.classLoader.BinaryDirectoryTreeModule;
 import com.ibm.wala.classLoader.Module;
@@ -83,6 +84,42 @@ public class AnalysisScopeReader {
 
       if (exclusionsFile != null) {
         InputStream fs = exclusionsFile.exists()? new FileInputStream(exclusionsFile): FileProvider.class.getClassLoader().getResourceAsStream(exclusionsFile.getName());
+        scope.setExclusions(new FileOfClasses(fs));
+      }
+
+    } finally {
+      if (r != null) {
+        try {
+          r.close();
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      }
+    }
+
+    return scope;
+  }
+
+  protected static AnalysisScope read(AnalysisScope scope, final URI scopeFileURI, final File exclusionsFile, ClassLoader javaLoader,
+      FileProvider fp) throws IOException {
+    BufferedReader r = null;
+    try {
+      String line;
+      final InputStream inStream = scopeFileURI.toURL().openStream();
+      if (inStream == null) {
+        throw new IllegalArgumentException("Unable to retrieve URI " + scopeFileURI.toString());
+      }
+      r = new BufferedReader(new InputStreamReader(inStream, "UTF-8"));
+
+      while ((line = r.readLine()) != null) {
+        processScopeDefLine(scope, javaLoader, line);
+      }
+
+      if (exclusionsFile != null) {
+        final InputStream fs = exclusionsFile.exists()
+            ? new FileInputStream(exclusionsFile)
+            : FileProvider.class.getClassLoader().getResourceAsStream(exclusionsFile.getName());
+
         scope.setExclusions(new FileOfClasses(fs));
       }
 
