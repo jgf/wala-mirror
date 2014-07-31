@@ -338,6 +338,24 @@ public abstract class AbstractRootMethod extends SyntheticMethod {
     return lv;
   }
 
+  public void addSetInstance(final FieldReference ref, final int baseObject, final int value) {
+    statements.add(insts.PutInstruction(statements.size(), baseObject, value, ref));
+  }
+  
+  public void addSetStatic(final FieldReference ref, final int value) {
+    statements.add(insts.PutInstruction(statements.size(), value, ref));
+  }
+  
+  public void addSetArrayField(final TypeReference elementType, final int baseObject, final int indexValue, final int value) {
+    statements.add(insts.ArrayStoreInstruction(statements.size(), baseObject, indexValue, value, elementType));
+  }
+
+  public int addGetArrayField(final TypeReference elementType, final int baseObject, final int indexValue) {
+    int result = nextLocal++;
+    statements.add(insts.ArrayLoadInstruction(statements.size(), result, baseObject, indexValue, elementType));
+    return result;
+  }
+
   public RTAContextInterpreter getInterpreter() {
     return new RTAContextInterpreter() {
 
