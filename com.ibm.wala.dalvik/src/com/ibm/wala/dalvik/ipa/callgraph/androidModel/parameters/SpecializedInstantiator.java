@@ -144,7 +144,7 @@ public class SpecializedInstantiator extends FlatInstantiator {
         understandTypes.add(AndroidTypes.ContextWrapper);
     }
 
-    public boolean understands(TypeReference T) {
+    public static boolean understands(TypeReference T) {
         return understandTypes.contains(T);
     }
 
