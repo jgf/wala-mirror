@@ -446,10 +446,16 @@ public class IntentContextSelector implements ContextSelector {
             }
         } else if (site.isSpecial() && target.getDeclaringClass().getName().equals(
                     AndroidTypes.IntentSenderName)) {
-            // public IntentSender(IIntentSender target)
-            // public IntentSender(IBinder target)
-            logger.warn("Encountered an IntentSender-Object");
-            return IntSetUtil.make(new int[] { 0, 1 });
+            
+            logger.warn("Encountered an IntentSender-Object: {}", target);
+            if (target.getNumberOfParameters() == 0) {
+            	// public IntentSender()
+            	return IntSetUtil.make(new int[] { 0 });
+            } else {
+            	// public IntentSender(IIntentSender target)
+                // public IntentSender(IBinder target)
+            	return IntSetUtil.make(new int[] { 0, 1 }); 
+            }
         } /*else if (site.isSpecial() && target.getDeclaringClass().getName().equals(
                     AndroidTypes.ContextWrapperName)) {
             logger.debug("Fetched ContextWrapper ctor");
