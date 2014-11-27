@@ -601,7 +601,7 @@ public class TypeSafeInstructionFactory {
         return true; // TODO
     }
 
-    private boolean isAssignableFrom(final TypeReference from, final TypeReference to) {
+    public boolean isAssignableFrom(final TypeReference from, final TypeReference to) {
         try {
             return ParameterAccessor.isAssignable(from, to, this.cha);
         } catch (ClassLookupException e) {
