@@ -72,7 +72,7 @@ import com.ibm.wala.util.strings.StringStuff;
 public final /* singleton */ class AndroidEntryPointManager implements Serializable {
     private static final Logger logger = LoggerFactory.getLogger(AndroidEntryPointManager.class);
 
-    public static final AndroidEntryPointManager MANAGER = new AndroidEntryPointManager();
+    public static AndroidEntryPointManager MANAGER = new AndroidEntryPointManager();
     public static List<AndroidEntryPoint> ENTRIES = new ArrayList<AndroidEntryPoint>();
     /**
      * This is TRANSIENT!
@@ -94,7 +94,12 @@ public final /* singleton */ class AndroidEntryPointManager implements Serializa
         return false;
     }
 
-    private AndroidEntryPointManager() {} 
+    private AndroidEntryPointManager() {}
+
+    public static void reset() {
+        ENTRIES = new ArrayList<AndroidEntryPoint>();
+        MANAGER = new AndroidEntryPointManager();
+    }
 
     public Set<TypeReference> getComponents() {
         if (ENTRIES.isEmpty()) {
