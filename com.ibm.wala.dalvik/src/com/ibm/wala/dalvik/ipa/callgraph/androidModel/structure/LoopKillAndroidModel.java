@@ -42,9 +42,12 @@ import org.slf4j.LoggerFactory;
 import com.ibm.wala.dalvik.ipa.callgraph.impl.AndroidEntryPoint.ExecutionOrder;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.summaries.VolatileMethodSummary;
+import com.ibm.wala.shrikeBT.IConditionalBranchInstruction;
+import com.ibm.wala.ssa.ConstantValue;
 import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.ssa.SSAValue;
+import com.ibm.wala.util.ssa.SSAValue.NamedKey;
 import com.ibm.wala.util.ssa.SSAValue.TypeKey;
 import com.ibm.wala.util.ssa.SSAValue.VariableKey;
 import com.ibm.wala.util.ssa.SSAValueManager;
@@ -143,7 +146,11 @@ public class LoopKillAndroidModel extends LoopAndroidModel {
         // Close the Loop
         logger.info("Closing Loop");
         logger.info("PC {}: Goto {}", PC, outerLoopPC);
-        body.addStatement(insts.GotoInstruction(PC, outerLoopPC));
+        NamedKey trueKey = new SSAValue.NamedKey(TypeReference.BooleanName, "true");
+        SSAValue trueVal = paramManager.getFree(TypeReference.Boolean, trueKey);
+        paramManager.setPhi(trueVal, null);
+        body.addConstant(trueVal.getNumber(), new ConstantValue(true));
+        body.addStatement(insts.ConditionalBranchInstruction(PC, IConditionalBranchInstruction.Operator.EQ, TypeReference.Boolean, trueVal.getNumber(), trueVal.getNumber(), outerLoopPC));
         paramManager.scopeUp();
         
         // Add Phi-Statements at the beginning of this block...
