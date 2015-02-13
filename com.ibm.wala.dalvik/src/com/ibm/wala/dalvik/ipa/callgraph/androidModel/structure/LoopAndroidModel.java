@@ -96,7 +96,7 @@ public class LoopAndroidModel extends SingleStartAndroidModel {
         logger.info("PC {} is the jump target of START_OF_LOOP", PC);
         
         this.outerLoopPC = PC;
-        PC = makeBrakingNOP(this.outerLoopPC);
+        PC = body.getNextProgramCounter();
         paramManager.scopeDown(true);
 
         // Top-Half of Phi-Handling
