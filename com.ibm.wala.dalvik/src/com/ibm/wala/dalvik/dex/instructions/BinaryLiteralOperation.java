@@ -1,4 +1,13 @@
 /*
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html.
+ * 
+ * This file is a derivative of code released under the terms listed below.  
+ *
+ */
+/*
  *
  * Copyright (c) 2009-2012,
  *
@@ -41,7 +50,7 @@ package com.ibm.wala.dalvik.dex.instructions;
 
 import org.jf.dexlib.Code.Opcode;
 
-import com.ibm.wala.cast.ir.ssa.AstConstants;
+import com.ibm.wala.cast.ir.ssa.CAstBinaryOp;
 import com.ibm.wala.dalvik.classLoader.DexIMethod;
 import com.ibm.wala.dalvik.classLoader.Literal;
 import com.ibm.wala.shrikeBT.IBinaryOpInstruction;
@@ -81,21 +90,21 @@ public class BinaryLiteralOperation extends Instruction {
         switch(op)
         {
         case CMPL_FLOAT:
-            return AstConstants.BinaryOp.LT;
+            return CAstBinaryOp.LT;
         case CMPG_FLOAT:
-            return AstConstants.BinaryOp.GT;
+            return CAstBinaryOp.GT;
         case CMPL_DOUBLE:
-            return AstConstants.BinaryOp.LT;
+            return CAstBinaryOp.LT;
         case CMPG_DOUBLE:
-            return AstConstants.BinaryOp.GT;
+            return CAstBinaryOp.GT;
         case CMPL_LONG:
-            return AstConstants.BinaryOp.LT;
+            return CAstBinaryOp.LT;
         case CMPG_LONG:
-            return AstConstants.BinaryOp.GT;
+            return CAstBinaryOp.GT;
         case CMPL_INT:
-            return AstConstants.BinaryOp.LT;
+            return CAstBinaryOp.LT;
         case CMPG_INT:
-            return AstConstants.BinaryOp.GT;
+            return CAstBinaryOp.GT;
         case ADD_INT:
             return IBinaryOpInstruction.Operator.ADD;
         case RSUB_INT:

@@ -71,8 +71,8 @@ escape = function escape(str){
 /************************************************************************/
 /* Object properties, see spec 15.2					*/
 /************************************************************************/
-    
-Object.prototype = {
+
+Object$proto$__WALA__ =  {
 
   prototype: null,
 
@@ -103,13 +103,13 @@ Object.prototype = {
   }
 };
 
-
+Object.prototype = Object$proto$__WALA__;
 
 /************************************************************************/
 /* Function properties, see spec 15.3					*/
 /************************************************************************/
 
-local_function.prototype = {
+Function$proto$__WALA__ = {
 
   constructor: Function,
 
@@ -134,6 +134,8 @@ local_function.prototype = {
   }
 };
 
+local_function.prototype = Function$proto$__WALA__;
+
 local_function.__proto__ = Function.prototype;
 
 /************************************************************************/
@@ -142,7 +144,7 @@ local_function.__proto__ = Function.prototype;
 
 local_array.__proto__ = Function.prototype;
 
-local_array.prototype = {
+Array$proto$__WALA__ = {
 
   __proto__: Object.prototype,
 
@@ -191,7 +193,17 @@ local_array.prototype = {
   },
 
   pop: function Array_prototype_pop () {
-    return this[ --this.length ];
+	  var n0 = this.length;
+	  if (n0) {
+		  var n1 = this[n0-1];
+		  this.length = n0-1;
+		  // needed for non-arrays
+		  delete this[n0-1];
+		  return n1;
+	  } else {
+		  // needed for non-arrays
+		  this.length = 0;
+	  }
   },
 
   push: function Array_prototype_push () {
@@ -320,13 +332,91 @@ local_array.prototype = {
   
   item: function Array_prototype_item(index) {
 	  return this[index];
+  },
+
+  every: function Array_prototype_every(arg1, arg2) {
+	  var n0 = this.length;
+	  var n3 = true;
+	  for (var i = 0; i < n0; i += 1) {
+	    var n1 = i in this;
+	    if (n1) {
+	      var n2 = this[i];
+	      n3 = arg1.call(arg2, n2, i, this);
+	      if (!n3) {
+	        break;
+	      }
+	    }
+	  }
+	  return n3;
+  },
+
+  some: function Array_prototype_some(arg1, arg2) {
+	  var n0 = this.length;
+	  var n3 = false;
+	  for (var i = 0; i < n0; i += 1) {
+	    var n1 = i in this;
+	    if (n1) {
+	      var n2 = this[i];
+	      n3 = arg1.call(arg2, n2, i, this);
+	      if (n3) {
+	        break;
+	      }
+	    }
+	  }
+	  return n3;
+  },
+
+  reduce: function Array_prototype_reduce(arg1, arg2) {
+	  var result = arg2;
+	  var n0 = this.length;
+	  for (var i = 0; i < n0; i += 1) {
+	    var n1 = i in this;
+	    if (n1) {
+	      var n2 = this[i];
+	      var n3 = arg1.call(undefined, result, n2, i, this);
+	      result = n3;
+	    }
+	  }
+	  return result;
+  },
+
+  reduceRight: function Array_prototype_reduceRight(arg1, arg2) {
+	  var result = arg2;
+	  var n0 = this.length;
+	  for (var i = 0; i < n0; i += 1) {
+	    var n1 = ((n0-i)-1) in this;
+	    if (n1) {
+	      var n2 = this[(n0-i)-1];
+	      var n3 = arg1.call(undefined, result, n2, (n0-i)-1, this);
+	      result = n3;
+	    }
+	  }
+	  return result;
+  },
+
+  filter: function Array_prototype_filter(arg1, arg2) {
+	  var result = [];
+	  var n0 = this.length;
+	  for (var i = 0; i < n0; i += 1) {
+	    var n1 = i in this;
+	    if (n1) {
+	      var n2 = this[i];
+	      var n3 = arg1.call(arg2, n2, i, this);
+	      if (n3) {
+	        result[result.length] = n2;
+	      }
+	    }
+	  }
+	  return result;
   }
+
 };
 
 Array.isArray = function Array_isArray(a) {
 	return true || false;
 };
 
+local_array.prototype = Array$proto$__WALA__;
 
 /************************************************************************/
 /* String properties, see spec 15.4					*/
@@ -334,7 +424,7 @@ Array.isArray = function Array_isArray(a) {
 
 local_string.__proto__ = Function.prototype;
 
-local_string.prototype = {
+String$proto$__WALA__ = {
 
   __proto__: Object.prototype,
 
@@ -436,6 +526,7 @@ local_string.prototype = {
 
 };
 
+local_string.prototype = String$proto$__WALA__;
 
 /************************************************************************/
 /* Number properties, see spec 15.7					*/
@@ -443,7 +534,7 @@ local_string.prototype = {
 
 local_number.__proto__ = Function.prototype;
 
-local_number.prototype = {
+Number$proto$__WALA__ = {
 
   __proto__: Object.prototype,
 
@@ -457,6 +548,7 @@ local_number.prototype = {
 
 };
 
+local_number.prototype = Number$proto$__WALA__;
 
 /************************************************************************/
 /* Math properties, see spec 15.8					*/
@@ -537,7 +629,7 @@ Math = {
 
 local_regexp.__proto__ = Function.prototype;
 
-local_regexp.prototype = {
+RegExp$proto$__WALA__ = {
 
   __proto__: Object.prototype,
 
@@ -553,6 +645,7 @@ local_regexp.prototype = {
 
 };
 
+local_regexp.prototype = RegExp$proto$__WALA__;
 
 /************************************************************************/
 /* Date properties, see spec 15.9					*/
@@ -560,7 +653,7 @@ local_regexp.prototype = {
 
 Date = function Date() {};
 
-Date.prototype = {
+Data$proto$__WALA__ = {
 
   __proto__: Object.prototype,
 
@@ -635,6 +728,13 @@ Date.prototype = {
 Date.now = function Date_now() {
 	return new Date().valueOf();
 };
+
+Date.prototype = Data$proto$__WALA__;
+
+
+/************************************************************************/
+/* internal stuff
+/************************************************************************/
 
 function Error(str) {
 	this.message = new String();

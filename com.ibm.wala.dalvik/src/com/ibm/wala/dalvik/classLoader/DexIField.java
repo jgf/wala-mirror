@@ -1,4 +1,13 @@
 /*
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html.
+ * 
+ * This file is a derivative of code released under the terms listed below.  
+ *
+ */
+/*
  *
  * Copyright (c) 2009-2012,
  *
@@ -49,6 +58,8 @@ import static org.jf.dexlib.Util.AccessFlags.VOLATILE;
 import java.util.Collection;
 
 import org.jf.dexlib.ClassDataItem.EncodedField;
+import org.jf.dexlib.StringIdItem;
+import org.jf.dexlib.TypeIdItem;
 
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IField;
@@ -58,7 +69,6 @@ import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.types.annotations.Annotation;
 import com.ibm.wala.util.strings.Atom;
-import com.ibm.wala.util.strings.ImmutableByteArray;
 
 public class DexIField implements IField {
 
@@ -91,20 +101,16 @@ public class DexIField implements IField {
     //public DexIField(EncodedField encodedField) {
         eField = encodedField;
         myClass = klass;
-        name = Atom.findOrCreateUnicodeAtom(eField.field.getFieldName().getStringValue());
+        StringIdItem fieldName = eField.field.getFieldName();
+		name = Atom.findOrCreateUnicodeAtom(fieldName.getStringValue());
 
-        ImmutableByteArray fieldType = ImmutableByteArray.make(eField.field.getFieldType().getTypeDescriptor());
-        TypeName T = null;
-        if (fieldType.get(fieldType.length() - 1) == ';') {
-            T = TypeName.findOrCreate(fieldType, 0, fieldType.length() - 1);
-        } else {
-            T = TypeName.findOrCreate(fieldType);
-        }
+        TypeIdItem fieldType = eField.field.getFieldType();
+		TypeName T = DexUtil.getTypeName(fieldType);
         TypeReference type = TypeReference.findOrCreate(myClass.getClassLoader().getReference(), T);
         myFieldRef = FieldReference.findOrCreate(myClass.getReference(), name, type);
     }
 
-    public TypeReference getFieldTypeReference() {
+	public TypeReference getFieldTypeReference() {
 
         //compute the typeReference from the EncodedField
 //      if (typeReference == null) {
@@ -167,7 +173,7 @@ public class DexIField implements IField {
 
 	@Override
 	public Collection<Annotation> getAnnotations() {
-		throw new UnsupportedOperationException();
+		return DexUtil.getAnnotations(myClass.getAnnotations(eField.field), myClass.getClassLoader().getReference());
 	}
 
 }

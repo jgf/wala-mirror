@@ -12,11 +12,10 @@ package com.ibm.wala.cast.js.rhino.callgraph.fieldbased.test;
 
 import java.io.IOException;
 
-
 import org.junit.Test;
 
 import com.ibm.wala.cast.ir.translator.TranslatorToCAst.Error;
-import com.ibm.wala.cast.js.rhino.callgraph.fieldbased.test.CGUtil.BuilderType;
+import com.ibm.wala.cast.js.test.FieldBasedCGUtil.BuilderType;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 
@@ -101,7 +100,9 @@ public class TestFieldBasedCG extends AbstractFieldBasedTest {
   }
 
   private static final Object[][] assertionsForReflectiveCall = new Object[][] {
-		new Object[] { "suffix:h", new String[] { "suffix:Function_prototype_call" } },
+		new Object[] { "suffix:h", new String[] { "suffix:Function_prototype_call", "suffix:Function_prototype_apply" } },
+    new Object[] { "suffix:Function_prototype_call", new String[] { "suffix:f" } },
+    new Object[] { "suffix:Function_prototype_apply", new String[] { "suffix:x" } },
 		new Object[] { "suffix:f", new String[] { "suffix:k" } }
 	};
 	

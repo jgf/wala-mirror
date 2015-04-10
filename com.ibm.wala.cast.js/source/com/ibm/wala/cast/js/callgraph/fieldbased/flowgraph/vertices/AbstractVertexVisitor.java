@@ -40,6 +40,11 @@ public class AbstractVertexVisitor<T> implements VertexVisitor<T> {
 		return visitVertex(funcVertex);
 	}
 
+	 @Override
+	  public T visitCreationSiteVertex(CreationSiteVertex csVertex) {
+	    return visitVertex(csVertex);
+	  }
+
 	@Override
   public T visitParamVertex(ParamVertex paramVertex) {
 		return visitVertex(paramVertex);
@@ -65,4 +70,13 @@ public class AbstractVertexVisitor<T> implements VertexVisitor<T> {
 		return visitVertex(lexicalAccessVertex);
 	}
 
+	 @Override
+	  public T visitGlobalVertex(GlobalVertex globalVertex) {
+	    return visitVertex(globalVertex);
+	  }
+
+	 @Override
+	 public T visitPrototypeVertex(PrototypeFieldVertex protoVertex) {
+	   return visitVertex(protoVertex);
+	 }
 }

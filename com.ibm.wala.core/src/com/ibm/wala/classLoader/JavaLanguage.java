@@ -11,6 +11,8 @@
  */
 package com.ibm.wala.classLoader;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -28,6 +30,8 @@ import com.ibm.wala.shrikeBT.IConditionalBranchInstruction;
 import com.ibm.wala.shrikeBT.IInstruction;
 import com.ibm.wala.shrikeBT.IUnaryOpInstruction;
 import com.ibm.wala.shrikeBT.Instruction;
+import com.ibm.wala.shrikeCT.BootstrapMethodsReader.BootstrapMethod;
+import com.ibm.wala.shrikeCT.ConstantPoolParser.ReferenceToken;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.SSAAddressOfInstruction;
 import com.ibm.wala.ssa.SSAArrayLengthInstruction;
@@ -44,6 +48,7 @@ import com.ibm.wala.ssa.SSAGotoInstruction;
 import com.ibm.wala.ssa.SSAInstanceofInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInstructionFactory;
+import com.ibm.wala.ssa.SSAInvokeDynamicInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSALoadIndirectInstruction;
 import com.ibm.wala.ssa.SSALoadMetadataInstruction;
@@ -58,8 +63,10 @@ import com.ibm.wala.ssa.SSASwitchInstruction;
 import com.ibm.wala.ssa.SSAThrowInstruction;
 import com.ibm.wala.ssa.SSAUnaryOpInstruction;
 import com.ibm.wala.types.ClassLoaderReference;
+import com.ibm.wala.types.Descriptor;
 import com.ibm.wala.types.FieldReference;
 import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.types.Selector;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.shrike.Exceptions.MethodResolutionFailure;
@@ -112,7 +119,7 @@ public class JavaLanguage extends LanguageImpl implements BytecodeLanguage, Cons
     public SSABinaryOpInstruction BinaryOpInstruction(int iindex, IBinaryOpInstruction.IOperator operator, boolean overflow, boolean unsigned,
         int result, int val1, int val2, boolean mayBeInteger) {
       assert !overflow;
-      assert (!unsigned) : "BinaryOpInstuction: unsigned disallowed! iIndex: " + iindex + ", operation: " + val1 + " " + operator.toString() + " " + val2 ;
+      // assert (!unsigned) : "BinaryOpInstuction: unsigned disallowed! iIndex: " + iindex + ", operation: " + val1 + " " + operator.toString() + " " + val2 ;
       return new SSABinaryOpInstruction(iindex, operator, result, val1, val2, mayBeInteger) {
 
         @Override
@@ -222,6 +229,19 @@ public class JavaLanguage extends LanguageImpl implements BytecodeLanguage, Cons
     @Override
     public SSAInvokeInstruction InvokeInstruction(int iindex, int result, int[] params, int exception, CallSiteReference site) {
       return new SSAInvokeInstruction(iindex, result, params, exception, site) {
+        @Override
+        public Collection<TypeReference> getExceptionTypes() {
+          if (!isStatic()) {
+            return getNullPointerException();
+          } else {
+            return Collections.emptySet();
+          }
+        }
+      };
+    }
+
+    public SSAInvokeDynamicInstruction InvokeInstruction(int result, int[] params, int exception, CallSiteReference site, BootstrapMethod bootstrap) {
+      return new SSAInvokeDynamicInstruction(result, params, exception, site, bootstrap) {
         @Override
         public Collection<TypeReference> getExceptionTypes() {
           if (!isStatic()) {
@@ -480,6 +500,10 @@ public class JavaLanguage extends LanguageImpl implements BytecodeLanguage, Cons
     } else if (o instanceof IMethod) {
       IMethod m = (IMethod) o;
       return m.isInit() ? TypeReference.JavaLangReflectConstructor : TypeReference.JavaLangReflectMethod;
+    } else if (o instanceof MethodHandle || o instanceof ReferenceToken) {
+      return TypeReference.JavaLangInvokeMethodHandle;
+    } else if (o instanceof MethodType) {
+      return TypeReference.JavaLangInvokeMethodType;
     } else {
       assert false : "unknown constant " + o + ": " + o.getClass();
       return null;
@@ -654,7 +678,9 @@ public class JavaLanguage extends LanguageImpl implements BytecodeLanguage, Cons
 
   @Override
   public boolean isMetadataType(TypeReference type) {
-    return type == TypeReference.JavaLangClass;
+    return type == TypeReference.JavaLangClass ||
+        type == TypeReference.JavaLangInvokeMethodHandle ||
+        type == TypeReference.JavaLangInvokeMethodType;
   }
   
   @Override
@@ -675,7 +701,13 @@ public class JavaLanguage extends LanguageImpl implements BytecodeLanguage, Cons
   @Override
   public Object getMetadataToken(Object value) {
     if (value instanceof ClassToken) {
-      return ShrikeUtil.makeTypeReference(ClassLoaderReference.Primordial, ((ClassToken) value).getTypeName());
+      return ShrikeUtil.makeTypeReference(ClassLoaderReference.Application, ((ClassToken) value).getTypeName());
+    } else if (value instanceof ReferenceToken) {
+      ReferenceToken tok = (ReferenceToken)value;
+      TypeReference cls = ShrikeUtil.makeTypeReference(ClassLoaderReference.Application, "L" + tok.getClassName());
+      return MethodReference.findOrCreate(cls, new Selector(Atom.findOrCreateUnicodeAtom(tok.getElementName()), Descriptor.findOrCreateUTF8(tok.getDescriptor())));
+    } else if (value instanceof MethodHandle || value instanceof MethodType) {
+      return value;
     } else {
       assert value instanceof TypeReference;
       return value;
@@ -685,11 +717,6 @@ public class JavaLanguage extends LanguageImpl implements BytecodeLanguage, Cons
   @Override
   public TypeReference getPointerType(TypeReference pointee) throws UnsupportedOperationException {
     throw new UnsupportedOperationException("Java does not permit explicit pointers");
-  }
-
-  @Override
-  public TypeReference getMetadataType() {
-    return TypeReference.JavaLangClass;
   }
 
   @Override

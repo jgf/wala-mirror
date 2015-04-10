@@ -18,11 +18,14 @@ import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.FlowGraph;
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.FlowGraphBuilder;
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.CallVertex;
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.FuncVertex;
+import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.ObjectVertex;
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.VarVertex;
 import com.ibm.wala.cast.js.callgraph.fieldbased.flowgraph.vertices.VertexFactory;
 import com.ibm.wala.cast.js.ipa.callgraph.JSAnalysisOptions;
 import com.ibm.wala.cast.js.ipa.callgraph.JSCallGraph;
 import com.ibm.wala.cast.js.ipa.callgraph.JavaScriptConstructTargetSelector;
+import com.ibm.wala.cast.js.ipa.callgraph.JavaScriptFunctionApplyContextInterpreter;
+import com.ibm.wala.cast.js.ipa.callgraph.JavaScriptFunctionApplyTargetSelector;
 import com.ibm.wala.cast.js.ipa.callgraph.JavaScriptFunctionDotCallTargetSelector;
 import com.ibm.wala.cast.js.ipa.summaries.JavaScriptConstructorFunctions;
 import com.ibm.wala.cast.js.ipa.summaries.JavaScriptConstructorFunctions.JavaScriptConstructor;
@@ -70,47 +73,47 @@ public abstract class FieldBasedCallGraphBuilder {
 	protected final AnalysisCache cache;
 	protected final JavaScriptConstructorFunctions constructors;
 	protected final MethodTargetSelector targetSelector;
+	protected final boolean supportFullPointerAnalysis;
 	
 	private static final boolean LOG_TIMINGS = true;
 	
-	public FieldBasedCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options, AnalysisCache cache) {
+	public FieldBasedCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options, AnalysisCache cache, boolean supportFullPointerAnalysis) {
 		this.cha = cha;
 		this.options = options;
 		this.cache = cache;
 		this.constructors = new JavaScriptConstructorFunctions(cha);
 		this.targetSelector = setupMethodTargetSelector(cha, constructors, options);
+		this.supportFullPointerAnalysis = supportFullPointerAnalysis;
 	}
 
   private MethodTargetSelector setupMethodTargetSelector(IClassHierarchy cha, JavaScriptConstructorFunctions constructors2, AnalysisOptions options) {
     MethodTargetSelector result = new JavaScriptConstructTargetSelector(constructors2, options.getMethodTargetSelector());
     if (options instanceof JSAnalysisOptions && ((JSAnalysisOptions)options).handleCallApply()) {
-      // TODO handle Function.prototype.apply
-      result = new JavaScriptFunctionDotCallTargetSelector(result);
+      result = new JavaScriptFunctionApplyTargetSelector(new JavaScriptFunctionDotCallTargetSelector(result));
     }
     return result;
   }
 	
-  protected FlowGraph flowGraphFactory(JavaScriptConstructorFunctions selector) {
-    FlowGraphBuilder builder = new FlowGraphBuilder(cha, cache, selector);
+  protected FlowGraph flowGraphFactory() {
+    FlowGraphBuilder builder = new FlowGraphBuilder(cha, cache, supportFullPointerAnalysis);
     return builder.buildFlowGraph();
   }
 
 	/**
 	 * Build a flow graph for the program to be analysed.
-	 * @param selector TODO
 	 */
-	public abstract FlowGraph buildFlowGraph(IProgressMonitor monitor, JavaScriptConstructorFunctions selector) throws CancelException;
+	public abstract FlowGraph buildFlowGraph(IProgressMonitor monitor) throws CancelException;
 	
 	/**
 	 * Main entry point: builds a flow graph, then extracts a call graph and returns it.
 	 */
-	public Pair<JSCallGraph,PointerAnalysis<FuncVertex>> buildCallGraph(Iterable<Entrypoint> eps, IProgressMonitor monitor) throws CancelException {
+	public Pair<JSCallGraph,PointerAnalysis<ObjectVertex>> buildCallGraph(Iterable<Entrypoint> eps, IProgressMonitor monitor) throws CancelException {
 		long fgBegin, fgEnd, cgBegin, cgEnd;
 	
 		if(LOG_TIMINGS) fgBegin = System.currentTimeMillis();
 
 		MonitorUtil.beginTask(monitor, "flow graph", 1);
-		FlowGraph flowGraph = buildFlowGraph(monitor, constructors);
+		FlowGraph flowGraph = buildFlowGraph(monitor);
 		MonitorUtil.done(monitor);
 		
 		if(LOG_TIMINGS) {
@@ -128,7 +131,7 @@ public abstract class FieldBasedCallGraphBuilder {
 			System.out.println("call graph extraction took " + (cgEnd-cgBegin)/1000.0 + " seconds");
 		}
 		
-		return Pair.make(cg,flowGraph.getPointerAnalysis(monitor));
+		return Pair.make(cg,flowGraph.getPointerAnalysis(cg, cache, monitor));
 	}
 
 	/**
@@ -139,7 +142,13 @@ public abstract class FieldBasedCallGraphBuilder {
 	  // set up call graph
 		final JSCallGraph cg = new JSCallGraph(cha, options, cache);
 		cg.init();
-		cg.setInterpreter(new DelegatingSSAContextInterpreter(new AstContextInsensitiveSSAContextInterpreter(options, cache), new DefaultSSAInterpreter(options, cache)));
+		
+		// setup context interpreters
+		DelegatingSSAContextInterpreter interpreter = new DelegatingSSAContextInterpreter(new AstContextInsensitiveSSAContextInterpreter(options, cache), new DefaultSSAInterpreter(options, cache));
+    if (options instanceof JSAnalysisOptions && ((JSAnalysisOptions)options).handleCallApply()) {
+      interpreter = new DelegatingSSAContextInterpreter(new JavaScriptFunctionApplyContextInterpreter(options, cache), interpreter);
+    }
+    cg.setInterpreter(interpreter);
 	    		
 		// set up call edges from fake root to all script nodes
 		AbstractRootMethod fakeRootMethod = (AbstractRootMethod)cg.getFakeRootNode().getMethod();
@@ -165,9 +174,11 @@ public abstract class FieldBasedCallGraphBuilder {
 		    IMethod target = targetSelector.getCalleeTarget(caller, site, targetVertex.getConcreteType());
 		    boolean isFunctionPrototypeCall = target != null
 		        && target.getName().toString().startsWith(JavaScriptFunctionDotCallTargetSelector.SYNTHETIC_CALL_METHOD_PREFIX);
+        boolean isFunctionPrototypeApply = target != null
+            && target.getName().toString().startsWith(JavaScriptFunctionApplyTargetSelector.SYNTHETIC_APPLY_METHOD_PREFIX);
 
-		    if (isFunctionPrototypeCall) {
-		      handleFunctionPrototypeCallInvocation(flowgraph, monitor, cg, callVertex, caller, site, target);
+		    if (isFunctionPrototypeCall || isFunctionPrototypeApply) {
+		      handleFunctionCallOrApplyInvocation(flowgraph, monitor, cg, callVertex, caller, site, target);
 		    } else {
 	          addEdgeToJSCallGraph(cg, site, target, caller);
 		     
@@ -195,7 +206,7 @@ public abstract class FieldBasedCallGraphBuilder {
 		return cg;
 	}
 
-  private boolean handleFunctionPrototypeCallInvocation(FlowGraph flowgraph, IProgressMonitor monitor, final JSCallGraph cg,
+  private boolean handleFunctionCallOrApplyInvocation(FlowGraph flowgraph, IProgressMonitor monitor, final JSCallGraph cg,
       CallVertex callVertex, CGNode caller, CallSiteReference site,
       IMethod target) throws CancelException {
     // use to get 1-level of call string for Function.prototype.call, to

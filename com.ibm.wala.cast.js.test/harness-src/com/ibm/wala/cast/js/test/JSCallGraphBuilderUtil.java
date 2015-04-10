@@ -88,21 +88,21 @@ public class JSCallGraphBuilderUtil extends com.ibm.wala.cast.js.ipa.callgraph.J
   /**
    * create a CG builder for script.  Note that the script at dir/name is loaded via the classloader, not from the filesystem.
    */
-  public static JSCFABuilder makeScriptCGBuilder(String dir, String name, CGBuilderType builderType) throws IOException, WalaException {
-    URL script = getURLforFile(dir, name);
+  public static JSCFABuilder makeScriptCGBuilder(String dir, String name, CGBuilderType builderType, ClassLoader loader) throws IOException, WalaException {
+    URL script = getURLforFile(dir, name, loader);
     CAstRewriterFactory preprocessor = builderType.extractCorrelatedPairs ? new CorrelatedPairExtractorFactory(translatorFactory, script) : null;
     JavaScriptLoaderFactory loaders = JSCallGraphUtil.makeLoaders(preprocessor);
 
-    AnalysisScope scope = makeScriptScope(script, dir, name, loaders);
+    AnalysisScope scope = makeScriptScope(dir, name, loaders, loader);
 
     return makeCG(loaders, scope, builderType, AstIRFactory.makeDefaultFactory());
   }
 
-  public static URL getURLforFile(String dir, String name) throws IOException {
+  public static URL getURLforFile(String dir, String name, ClassLoader loader) throws IOException {
     File f = null;
     FileProvider provider = new FileProvider();
     try {
-      f = provider.getFile(dir + File.separator + name, JSCallGraphBuilderUtil.class.getClassLoader());
+      f = provider.getFile(dir + File.separator + name, loader);
     } catch (FileNotFoundException e) {
       // I guess we need to do this on Windows sometimes?  --MS
       // if this fails, we won't catch the exception
@@ -111,10 +111,6 @@ public class JSCallGraphBuilderUtil extends com.ibm.wala.cast.js.ipa.callgraph.J
     return f.toURI().toURL();
   }
   
-  static AnalysisScope makeScriptScope(String dir, String name, JavaScriptLoaderFactory loaders) throws IOException {
-    return makeScriptScope(getURLforFile(dir, name), dir, name, loaders);
-  }
-
   public static SourceModule getPrologueFile(final String name) {
     return new SourceURLModule(JSCallGraphBuilderUtil.class.getClassLoader().getResource(name)) {
       @Override
@@ -124,26 +120,46 @@ public class JSCallGraphBuilderUtil extends com.ibm.wala.cast.js.ipa.callgraph.J
     };
   }
   
-  static AnalysisScope makeScriptScope(URL script, String dir, String name, JavaScriptLoaderFactory loaders) throws IOException {
-    return makeScope(
-        new SourceModule[] { 
-            (script.openConnection() instanceof JarURLConnection)? new SourceURLModule(script): makeSourceModule(script, dir, name), 
-            getPrologueFile("prologue.js")
-        }, loaders, JavaScriptLoader.JS);
-    
+  public static AnalysisScope makeScriptScope(String dir, String name, JavaScriptLoaderFactory loaders, ClassLoader loader) throws IOException {
+    return makeScope(makeSourceModules(dir, name, loader), loaders, JavaScriptLoader.JS);    
+  }
+
+  public static AnalysisScope makeScriptScope(String dir, String name, JavaScriptLoaderFactory loaders) throws IOException {
+    return makeScope(makeSourceModules(dir, name, JSCallGraphBuilderUtil.class.getClassLoader()), loaders, JavaScriptLoader.JS);    
+  }
+
+  public static SourceModule[] makeSourceModules(String dir, String name) throws IOException {
+    return makeSourceModules(dir, name, JSCallGraphBuilderUtil.class.getClassLoader());
+  }
+  
+  public static SourceModule[] makeSourceModules(String dir, String name, ClassLoader loader) throws IOException {
+    URL script = getURLforFile(dir, name, loader);
+    SourceModule[] modules = new SourceModule[] { 
+        (script.openConnection() instanceof JarURLConnection)? new SourceURLModule(script): makeSourceModule(script, dir, name), 
+        getPrologueFile("prologue.js")
+    };
+    return modules;
+  }
+
+  public static JSCFABuilder makeScriptCGBuilder(String dir, String name, ClassLoader loader) throws IOException, WalaException {
+    return makeScriptCGBuilder(dir, name, CGBuilderType.ZERO_ONE_CFA, loader);
   }
 
   public static JSCFABuilder makeScriptCGBuilder(String dir, String name) throws IOException, WalaException {
-    return makeScriptCGBuilder(dir, name, CGBuilderType.ZERO_ONE_CFA);
+    return makeScriptCGBuilder(dir, name, CGBuilderType.ZERO_ONE_CFA, JSCallGraphBuilderUtil.class.getClassLoader());
   }
 
   public static CallGraph makeScriptCG(String dir, String name) throws IOException, IllegalArgumentException, CancelException, WalaException {
-    return makeScriptCG(dir, name, CGBuilderType.ZERO_ONE_CFA);
+    return makeScriptCG(dir, name, CGBuilderType.ZERO_ONE_CFA, JSCallGraphBuilderUtil.class.getClassLoader());
+  }
+  
+  public static CallGraph makeScriptCG(String dir, String name, ClassLoader loader) throws IOException, IllegalArgumentException, CancelException, WalaException {
+    return makeScriptCG(dir, name, CGBuilderType.ZERO_ONE_CFA, loader);
   }
 
-  public static CallGraph makeScriptCG(String dir, String name, CGBuilderType builderType) throws IOException,
+  public static CallGraph makeScriptCG(String dir, String name, CGBuilderType builderType, ClassLoader loader) throws IOException,
       IllegalArgumentException, CancelException, WalaException {
-    PropagationCallGraphBuilder b = makeScriptCGBuilder(dir, name, builderType);
+    PropagationCallGraphBuilder b = makeScriptCGBuilder(dir, name, builderType, loader);
     CallGraph CG = b.makeCallGraph(b.getOptions());
     // dumpCG(b.getPointerAnalysis(), CG);
     return CG;

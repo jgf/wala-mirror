@@ -155,7 +155,7 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
     }
   }
 
-  protected static class ImplicitPointsToSetVisitor extends SSAInstruction.Visitor {
+  public static class ImplicitPointsToSetVisitor extends SSAInstruction.Visitor {
     protected final PointerAnalysisImpl analysis;
 
     protected final CGNode node;
@@ -482,8 +482,8 @@ public class PointerAnalysisImpl extends AbstractPointerAnalysis {
     }
 
     @Override
-    public InstanceKey getInstanceKeyForClassObject(TypeReference type) {
-      return iKeyFactory.getInstanceKeyForClassObject(type);
+    public InstanceKey getInstanceKeyForMetadataObject(Object obj, TypeReference objType) {
+      return iKeyFactory.getInstanceKeyForMetadataObject(obj, objType);
     }
 
     /*

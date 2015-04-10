@@ -4,8 +4,7 @@ Bundle-Name: JavaScript Plug-in
 Bundle-SymbolicName: com.ibm.wala.cast.js;singleton:=true
 Bundle-Version: 1.3.4.qualifier
 Bundle-ClassPath: .,
- lib/jericho-html-3.2.jar,
- lib/commons-io-2.4.jar
+ lib/jericho-html-3.2.jar
 Bundle-Activator: com.ibm.wala.cast.js.JavaScriptPlugin
 Bundle-Vendor: IBM
 Export-Package: .,
@@ -29,7 +28,9 @@ Export-Package: .,
  com.ibm.wala.cast.js.translator,
  com.ibm.wala.cast.js.types,
  com.ibm.wala.cast.js.util,
- com.ibm.wala.cast.js.vis
+ com.ibm.wala.cast.js.vis,
+ net.htmlparser.jericho,
+ net.htmlparser.jericho.nodoc
 Require-Bundle: com.ibm.wala.cast,
  com.ibm.wala.core,
  com.ibm.wala.cast,
@@ -38,4 +39,4 @@ Require-Bundle: com.ibm.wala.cast,
  org.eclipse.core.runtime;bundle-version="3.4.0",
  org.apache.commons.logging
 Bundle-ActivationPolicy: lazy
-Bundle-RequiredExecutionEnvironment: JavaSE-1.6
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7

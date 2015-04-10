@@ -74,6 +74,7 @@ import com.ibm.wala.util.intset.IntSetAction;
 import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.util.intset.MutableIntSet;
 import com.ibm.wala.util.intset.MutableMapping;
+import com.ibm.wala.util.strings.Atom;
 
 public abstract class AstSSAPropagationCallGraphBuilder extends SSAPropagationCallGraphBuilder {
 
@@ -112,6 +113,8 @@ public abstract class AstSSAPropagationCallGraphBuilder extends SSAPropagationCa
   // /////////////////////////////////////////////////////////////////////////
 
   
+  public abstract GlobalObjectKey getGlobalObject(Atom language);
+
   protected AstSSAPropagationCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options, AnalysisCache cache,
       PointerKeyFactory pointerKeyFactory) {
     super(cha, options, cache, pointerKeyFactory);
@@ -326,7 +329,8 @@ public abstract class AstSSAPropagationCallGraphBuilder extends SSAPropagationCa
   //
   // /////////////////////////////////////////////////////////////////////////
 
-  protected ConstraintVisitor makeVisitor(ExplicitCallGraph.ExplicitNode node) {
+  @Override
+  public ConstraintVisitor makeVisitor(CGNode node) {
     return new AstConstraintVisitor(this, node);
   }
 
@@ -623,6 +627,9 @@ public abstract class AstSSAPropagationCallGraphBuilder extends SSAPropagationCa
             System.err.println(("looking up lexical parent " + definer));
 
           Set<CGNode> creators = getLexicalDefiners(node, Pair.make(name, definer));
+          
+          System.err.println("definers " + creators.size());
+          
           for (CGNode n : creators) {
             PointerKey funargKey = handleRootLexicalReference(name, definer, n);
             action(funargKey, vn);
@@ -1233,6 +1240,10 @@ public abstract class AstSSAPropagationCallGraphBuilder extends SSAPropagationCa
         public void action(AbstractFieldPointerKey fieldKey) {
           if (!representsNullType(fieldKey.getInstanceKey())) {
             system.newConstraint(lhs, assignOperator, fieldKey);
+            AbstractFieldPointerKey unknown = getBuilder().fieldKeyForUnknownWrites(fieldKey);
+            if (unknown != null) {
+              system.newConstraint(lhs, assignOperator, unknown);            
+            }
           }
         }
       });
@@ -1240,11 +1251,16 @@ public abstract class AstSSAPropagationCallGraphBuilder extends SSAPropagationCa
   }
 
   /**
+   * If the given fieldKey represents a concrete field, return the corresponding field key that
+   * represents all writes to unknown fields that could potentially alias fieldKey
+   */
+  protected abstract AbstractFieldPointerKey fieldKeyForUnknownWrites(AbstractFieldPointerKey fieldKey);
+  
+  /**
    * 
    * Is definingMethod the same as the method represented by opNode?  We need this since the names for 
    * methods in some languages don't map in the straightforward way to the CGNode 
    */
   protected abstract boolean sameMethod(final CGNode opNode, final String definingMethod);
-
 
 }

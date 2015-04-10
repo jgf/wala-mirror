@@ -1,4 +1,13 @@
 /*
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html.
+ * 
+ * This file is a derivative of code released under the terms listed below.  
+ *
+ */
+/*
  *  Copyright (c) 2013,
  *      Tobias Blaschke <code@tobiasblaschke.de>
  *  All rights reserved.
@@ -42,7 +51,10 @@ import com.ibm.wala.types.ClassLoaderReference;
  */
 public final class AndroidTypes {
 
-    public static final TypeName IntentName = TypeName.string2TypeName("Landroid/content/Intent");
+    public static final TypeName HandlerName = TypeName.string2TypeName("Landroid/os/Handler");
+    public static final TypeReference Handler = TypeReference.findOrCreate(ClassLoaderReference.Primordial, HandlerName);
+
+	public static final TypeName IntentName = TypeName.string2TypeName("Landroid/content/Intent");
     public static final TypeReference Intent = TypeReference.findOrCreate(ClassLoaderReference.Primordial, IntentName);
     public static final TypeName ApplicationName = TypeName.string2TypeName("Landroid/app/Application");
     public static final TypeReference Application = TypeReference.findOrCreate(ClassLoaderReference.Primordial, ApplicationName);

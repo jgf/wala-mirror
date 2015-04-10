@@ -612,8 +612,8 @@ public abstract class SSAPropagationCallGraphBuilder extends PropagationCallGrap
       return getBuilder().getInstanceKeyForPEI(node, instr, type);
     }
 
-    public InstanceKey getInstanceKeyForClassObject(TypeReference type) {
-      return getBuilder().getInstanceKeyForClassObject(type);
+    public InstanceKey getInstanceKeyForClassObject(Object obj, TypeReference type) {
+      return getBuilder().getInstanceKeyForMetadataObject(obj, type);
     }
 
     public CGNode getTargetForCall(CGNode caller, CallSiteReference site, IClass recv, InstanceKey iKey[]) {
@@ -1085,7 +1085,7 @@ public abstract class SSAPropagationCallGraphBuilder extends PropagationCallGrap
             @Override
             public void act(int x) {
               if (!contentsAreInvariant(symbolTable, du, instruction.getUse(x))) {
-                pks.add(getBuilder().getPointerKeyForLocal(node, instruction.getUse(x)));
+                pks.add(getBuilder().getPointerKeyForLocal(node, instruction.getUse(x)));                   
               }
             }
           });
@@ -1387,13 +1387,15 @@ public abstract class SSAPropagationCallGraphBuilder extends PropagationCallGrap
     @Override
     public void visitLoadMetadata(SSALoadMetadataInstruction instruction) {
       PointerKey def = getPointerKeyForLocal(instruction.getDef());
-      assert instruction.getType() == TypeReference.JavaLangClass;
-      InstanceKey iKey = getInstanceKeyForClassObject((TypeReference) instruction.getToken());
-      IClass klass = getClassHierarchy().lookupClass((TypeReference) instruction.getToken());
-      if (klass != null) {
-        processClassInitializer(klass);
+      InstanceKey iKey = getInstanceKeyForClassObject(instruction.getToken(), instruction.getType());
+      
+      if (instruction.getToken() instanceof TypeReference) {
+        IClass klass = getClassHierarchy().lookupClass((TypeReference) instruction.getToken());
+        if (klass != null) {
+          processClassInitializer(klass);
+        }
       }
-
+      
       if (!contentsAreInvariant(symbolTable, du, instruction.getDef())) {
         system.newConstraint(def, iKey);
       } else {
@@ -1530,7 +1532,7 @@ public abstract class SSAPropagationCallGraphBuilder extends PropagationCallGrap
         if (constParams != null && constParams[i] != null) {
           InstanceKey[] ik = constParams[i];
           for (int j = 0; j < ik.length; j++) {
-            system.newConstraint(formal, ik[j]);
+              system.newConstraint(formal, ik[j]);
           }
         } else {
           if (instruction.getUse(i) < 0) {
@@ -1791,7 +1793,19 @@ public abstract class SSAPropagationCallGraphBuilder extends PropagationCallGrap
 
     @Override
     public int hashCode() {
-      return node.hashCode() + 90289 * call.hashCode();
+      int h = 1;
+      if (constParams != null) {
+        for(InstanceKey[] cs : constParams) {
+          if (cs != null) {
+            for(InstanceKey c : cs) {
+              if (c != null) {
+                h = h ^ c.hashCode();
+              }
+            }
+          }
+        }
+      }
+      return h * node.hashCode() + 90289 * call.hashCode();
     }
 
     @Override
@@ -1932,7 +1946,7 @@ public abstract class SSAPropagationCallGraphBuilder extends PropagationCallGrap
   protected static class InterestingVisitor extends SSAInstruction.Visitor {
     protected final int vn;
 
-    protected InterestingVisitor(int vn) {
+    public InterestingVisitor(int vn) {
       this.vn = vn;
     }
 
@@ -2057,7 +2071,7 @@ public abstract class SSAPropagationCallGraphBuilder extends PropagationCallGrap
    * @param target
    * @return an IClass which represents
    */
-  protected PointerKey getTargetPointerKey(CGNode target, int index) {
+  public PointerKey getTargetPointerKey(CGNode target, int index) {
     int vn;
     if (target.getIR() != null) {
       vn = target.getIR().getSymbolTable().getParameter(index);
@@ -2067,21 +2081,25 @@ public abstract class SSAPropagationCallGraphBuilder extends PropagationCallGrap
 
     FilteredPointerKey.TypeFilter filter = (FilteredPointerKey.TypeFilter) target.getContext().get(ContextKey.PARAMETERS[index]);
     if (filter != null && !filter.isRootFilter()) {
-        return pointerKeyFactory.getFilteredPointerKeyForLocal(target, vn, filter);
+        return getFilteredPointerKeyForLocal(target, vn, filter);
     
-    } else if (index == 0 && !target.getMethod().isStatic()) {
+    } else { 
       // the context does not select a particular concrete type for the
       // receiver, so use the type of the method
-      IClass C = getReceiverClass(target.getMethod());
-      if (C.getClassHierarchy().getRootClass().equals(C)) {
-        return pointerKeyFactory.getPointerKeyForLocal(target, vn);        
+      IClass C;
+      if (index == 0 && !target.getMethod().isStatic()) {
+        C = getReceiverClass(target.getMethod());
       } else {
-        return pointerKeyFactory.getFilteredPointerKeyForLocal(target, vn, new FilteredPointerKey.SingleClassFilter(C));
+        C = cha.lookupClass(target.getMethod().getParameterType(index));
       }
       
-    } else {
-      return pointerKeyFactory.getPointerKeyForLocal(target, vn);
-    }
+      if (C == null || C.getClassHierarchy().getRootClass().equals(C)) {
+        return getPointerKeyForLocal(target, vn);        
+      } else {
+        return getFilteredPointerKeyForLocal(target, vn, new FilteredPointerKey.SingleClassFilter(C));
+      }
+      
+    } 
   }
 
   /**
@@ -2136,7 +2154,7 @@ public abstract class SSAPropagationCallGraphBuilder extends PropagationCallGrap
    * @param valueNumber
    * @return the complete set of instances that the local with vn=valueNumber may point to.
    */
-  protected InstanceKey[] getInvariantContents(SymbolTable symbolTable, DefUse du, CGNode node, int valueNumber, HeapModel hm) {
+  public InstanceKey[] getInvariantContents(SymbolTable symbolTable, DefUse du, CGNode node, int valueNumber, HeapModel hm) {
     return getInvariantContents(symbolTable, du, node, valueNumber, hm, false);
   }
 

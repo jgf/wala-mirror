@@ -1,4 +1,13 @@
 /*
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html.
+ * 
+ * This file is a derivative of code released under the terms listed below.  
+ *
+ */
+/*
  *
  * Copyright (c) 2009-2012,
  *
@@ -41,14 +50,15 @@ package com.ibm.wala.dalvik.dex.instructions;
 
 import org.jf.dexlib.Code.Opcode;
 
-import com.ibm.wala.cast.ir.ssa.AstConstants;
+import com.ibm.wala.cast.ir.ssa.CAstUnaryOp;
 import com.ibm.wala.dalvik.classLoader.DexIMethod;
 import com.ibm.wala.shrikeBT.IUnaryOpInstruction;
 import com.ibm.wala.shrikeBT.IUnaryOpInstruction.IOperator;
+import com.ibm.wala.util.debug.Assertions;
 
 public class UnaryOperation extends Instruction {
 
-    public static enum OpID {MOVE, MOVE_WIDE, NOT, NEGINT, NOTINT, NEGLONG, NOTLONG, NEGFLOAT, NEGDOUBLE, DOUBLETOLONG, DOUBLETOFLOAT, INTTOBYTE, INTTOCHAR, INTTOSHORT, DOUBLETOINT, FLOATTODOUBLE, FLOATTOLONG, FLOATTOINT, LONGTODOUBLE, LONGTOFLOAT, LONGTOINT, INTTODOUBLE, INTTOFLOAT, INTTOLONG};
+    public static enum OpID {MOVE, MOVE_WIDE, MOVE_EXCEPTION, NOT, NEGINT, NOTINT, NEGLONG, NOTLONG, NEGFLOAT, NEGDOUBLE, DOUBLETOLONG, DOUBLETOFLOAT, INTTOBYTE, INTTOCHAR, INTTOSHORT, DOUBLETOINT, FLOATTODOUBLE, FLOATTOLONG, FLOATTOINT, LONGTODOUBLE, LONGTOFLOAT, LONGTOINT, INTTODOUBLE, INTTOFLOAT, INTTOLONG};
 
     public final OpID op;
     public final int source;
@@ -107,43 +117,23 @@ public class UnaryOperation extends Instruction {
     public IOperator getOperator() {
         switch(op)
         {
-        // moves
-        case MOVE:
-        case MOVE_WIDE:
-            return null;
         // SSA unary ops
         case NOT:
-            return AstConstants.UnaryOp.BITNOT;
+            return CAstUnaryOp.BITNOT;
         case NEGINT:
             return IUnaryOpInstruction.Operator.NEG;
         case NOTINT:
-            return AstConstants.UnaryOp.BITNOT;
+            return CAstUnaryOp.BITNOT;
         case NEGLONG:
             return IUnaryOpInstruction.Operator.NEG;
         case NOTLONG:
-            return AstConstants.UnaryOp.BITNOT;
+            return CAstUnaryOp.BITNOT;
         case NEGFLOAT:
             return IUnaryOpInstruction.Operator.NEG;
         case NEGDOUBLE:
             return IUnaryOpInstruction.Operator.NEG;
-        // SSA conversions
-        case DOUBLETOLONG:
-        case DOUBLETOFLOAT:
-        case INTTOBYTE:
-        case INTTOCHAR:
-        case INTTOSHORT:
-        case DOUBLETOINT:
-        case FLOATTODOUBLE:
-        case FLOATTOLONG:
-        case FLOATTOINT:
-        case LONGTODOUBLE:
-        case LONGTOFLOAT:
-        case LONGTOINT:
-        case INTTODOUBLE:
-        case INTTOFLOAT:
-        case INTTOLONG:
-            return null;
         default:
+        	Assertions.UNREACHABLE();
             return null;
         }
     }

@@ -52,7 +52,7 @@ import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.ssa.SSAPiInstruction;
 import com.ibm.wala.ssa.SSAReturnInstruction;
 import com.ibm.wala.types.TypeReference;
-import com.ibm.wala.util.collections.Filter;
+import com.ibm.wala.util.Predicate;
 import com.ibm.wala.util.collections.FilterIterator;
 import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.collections.HashSetFactory;
@@ -534,8 +534,10 @@ public class PDG implements NumberedGraph<Statement> {
             continue;
           }
           if (pei instanceof SSAAbstractInvokeInstruction) {
-            Statement st = new ExceptionalReturnCaller(node, index);
-            delegate.addEdge(st, s);
+            if (! dOptions.isIgnoreExceptions()) {
+              Statement st = new ExceptionalReturnCaller(node, index);
+              delegate.addEdge(st, s);
+            }
           } else {
             delegate.addEdge(new NormalStatement(node, index), s);
           }
@@ -560,8 +562,10 @@ public class PDG implements NumberedGraph<Statement> {
               if (d instanceof SSAAbstractInvokeInstruction) {
                 SSAAbstractInvokeInstruction call = (SSAAbstractInvokeInstruction) d;
                 if (vn == call.getException()) {
-                  Statement st = new ExceptionalReturnCaller(node, instructionIndices.get(d));
-                  delegate.addEdge(st, pac);
+                  if (! dOptions.isIgnoreExceptions()) {
+                    Statement st = new ExceptionalReturnCaller(node, instructionIndices.get(d));
+                    delegate.addEdge(st, pac);
+                  }
                 } else {
                   Statement st = new NormalReturnCaller(node, instructionIndices.get(d));
                   delegate.addEdge(st, pac);
@@ -670,9 +674,8 @@ public class PDG implements NumberedGraph<Statement> {
 
     // in reaching defs calculation, exclude heap statements that are
     // irrelevant.
-    Filter f = new Filter() {
-      @Override
-      public boolean accepts(Object o) {
+    Predicate f = new Predicate() {
+      @Override public boolean test(Object o) {
         if (o instanceof HeapStatement) {
           HeapStatement h = (HeapStatement) o;
           return h.getLocation().equals(pk);
@@ -763,9 +766,8 @@ public class PDG implements NumberedGraph<Statement> {
    * @return Statements representing each return instruction in the ir
    */
   private Collection<NormalStatement> computeReturnStatements(final IR ir) {
-    Filter filter = new Filter() {
-      @Override
-      public boolean accepts(Object o) {
+    Predicate filter = new Predicate() {
+      @Override public boolean test(Object o) {
         if (o instanceof NormalStatement) {
           NormalStatement s = (NormalStatement) o;
           SSAInstruction st = ir.getInstructions()[s.getInstructionIndex()];

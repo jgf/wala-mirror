@@ -1,4 +1,13 @@
 /*
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html.
+ * 
+ * This file is a derivative of code released under the terms listed below.  
+ *
+ */
+/*
  *
  * Copyright (c) 2009-2012,
  *
@@ -38,13 +47,12 @@
 
 package com.ibm.wala.dalvik.classLoader;
 
-import static org.jf.dexlib.ItemType.TYPE_CLASS_DEF_ITEM;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.jar.JarFile;
 
 import org.jf.dexlib.ClassDefItem;
 import org.jf.dexlib.DexFile;
@@ -54,6 +62,7 @@ import org.slf4j.LoggerFactory;
 
 import com.ibm.wala.classLoader.Module;
 import com.ibm.wala.classLoader.ModuleEntry;
+import com.ibm.wala.util.io.TemporaryFile;
 
 /**
  * A module which is a wrapper around .dex and .apk file.
@@ -66,12 +75,35 @@ public class DexFileModule implements Module {
     private final DexFile dexfile;
     private final Collection<ModuleEntry> entries;
 
+    public static DexFileModule make(File f) throws IllegalArgumentException, IOException {
+    	if (f.getName().endsWith("jar")) {
+    		return new DexFileModule(new JarFile(f));
+    	} else {
+    		return new DexFileModule(f);
+    	}
+    }
+    
+    private static File tf(JarFile f) {
+    	String name = f.getName();
+    	if (name.indexOf('/') >= 0) {
+    		name = name.substring(name.lastIndexOf('/')+1);
+    	}
+    	File tf = new File(System.getProperty("java.io.tmpdir") + "/" + name + "_classes.dex");
+    	tf.deleteOnExit();
+    	System.err.println("using " + tf);
+    	return tf;
+    }
+    
+    private DexFileModule(JarFile f) throws IllegalArgumentException, IOException {    	
+    	this(TemporaryFile.streamToFile(tf(f), f.getInputStream(f.getEntry("classes.dex"))));
+    }
+    
     /**
      * @param f
      *            the .dex or .apk file
      * @throws IllegalArgumentException
      */
-    public DexFileModule(File f) throws IllegalArgumentException {    	
+    private DexFileModule(File f) throws IllegalArgumentException {    	
         try {
             dexfile = new DexFile(f);
         } catch (IOException e) {
@@ -81,9 +113,7 @@ public class DexFileModule implements Module {
         // create ModuleEntries from ClassDefItem
         entries = new HashSet<ModuleEntry>();
 
-        @SuppressWarnings("unchecked")
-		Section<ClassDefItem> cldeff = dexfile.getSectionForType(TYPE_CLASS_DEF_ITEM);
-
+        Section<ClassDefItem> cldeff = dexfile.ClassDefsSection;
         for (ClassDefItem cdefitems : cldeff.getItems()) {
             logger.debug("DexFileModule adding class: " + cdefitems.getConciseIdentity());
             entries.add(new DexModuleEntry(cdefitems));

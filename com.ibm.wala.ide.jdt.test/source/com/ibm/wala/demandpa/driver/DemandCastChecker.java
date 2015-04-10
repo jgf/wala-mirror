@@ -1,3 +1,14 @@
+/******************************************************************************
+ * Copyright (c) 2002 - 2014 IBM Corporation.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html
+ *
+ * Contributors:
+ *     IBM Corporation - initial API and implementation
+ *****************************************************************************/
+
 /**
  * Refinement Analysis Tools is Copyright (c) 2007 The Regents of the
  * University of California (Regents). Provided that this notice and
@@ -196,6 +207,7 @@ public class DemandCastChecker {
     return Pair.make(retCG, retPA);
   }
 
+  @SuppressWarnings("unused")
   private static RefinementPolicyFactory chooseRefinePolicyFactory(ClassHierarchy cha) {
     if (true) {
       return new TunedRefinementPolicy.Factory(cha);

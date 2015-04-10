@@ -64,7 +64,7 @@ public final class ClassReader implements ClassConstants {
     if (magic != MAGIC) {
       throw new InvalidClassFileException(offset, "bad magic number: " + magic);
     }
-    if (majorVersion < 45 || majorVersion > 51) {
+    if (majorVersion < 45 || majorVersion > 52) {
       throw new InvalidClassFileException(offset, "unknown class file version: " + majorVersion + "." + minorVersion);
     }
     
@@ -617,7 +617,7 @@ public final class ClassReader implements ClassConstants {
   }
 
   /**
-   * @return the method descriptor of method m in JVM format (e.g., V(ILjava/lang/Object;) )
+   * @return the method descriptor of method m in JVM format (e.g., (ILjava/lang/Object;)V )
    */
   public String getMethodType(int m) throws InvalidClassFileException {
     verifyMethodIndex(m);

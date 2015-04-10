@@ -40,6 +40,7 @@ package com.ibm.wala.cast.java.client;
 import java.io.IOException;
 
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.IJavaProject;
 
 import com.ibm.wala.cast.ir.ssa.AstIRFactory;
@@ -61,7 +62,8 @@ import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.util.config.SetOfClasses;
 
 public class JDTJavaSourceAnalysisEngine extends EclipseProjectSourceAnalysisEngine<IJavaProject> {
-
+  private boolean dump;
+  
   public JDTJavaSourceAnalysisEngine(IJavaProject project) throws IOException, CoreException {
     super(project);
   }
@@ -70,9 +72,13 @@ public class JDTJavaSourceAnalysisEngine extends EclipseProjectSourceAnalysisEng
     this(JdtUtil.getNamedProject(projectName));
   }
 
+  public void setDump(boolean dump) {
+    this.dump = dump;
+  }
+  
   @Override
   protected ClassLoaderFactory makeClassLoaderFactory(SetOfClasses exclusions) {
-	  return new JDTClassLoaderFactory(exclusions);	
+	  return new JDTClassLoaderFactory(exclusions, dump);	
   }
 
   @Override
@@ -93,6 +99,7 @@ public class JDTJavaSourceAnalysisEngine extends EclipseProjectSourceAnalysisEng
   @Override
   protected EclipseProjectPath<?, IJavaProject> createProjectPath(
 		  IJavaProject project) throws IOException, CoreException {
+    project.open(new NullProgressMonitor());
 	  return JavaEclipseProjectPath.make(project, AnalysisScopeType.SOURCE_FOR_PROJ_AND_LINKED_PROJS);	
   }
 

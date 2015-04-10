@@ -185,7 +185,7 @@ DOMDocument = function DOMDocument() {
 
 	};
 	
-	this.writeln = function Document_prototype_write (stuff) {
+	this.writeln = function Document_prototype_writeln (stuff) {
 
 	};
 };
@@ -312,7 +312,7 @@ function Referrer() {
 	this.toString = function () { return new String();}
 }
 document.referrer = new Referrer();
-document.evaluate = function evaluate(a, b, c, d, e) {
+document.evaluate = function documentEvaluate(a, b, c, d, e) {
 }
 document.execCommand = function execCommand(a,b,c) {}
 

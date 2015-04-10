@@ -406,7 +406,7 @@ public interface Constants {
 
   public static final short OP_invokeinterface = 185;
 
-  public static final short OP_xxxunusedxxx = 186;
+  public static final short OP_invokedynamic = 186;
 
   public static final short OP_new = 187;
 
@@ -490,6 +490,8 @@ public interface Constants {
   
   public static final byte CONSTANT_MethodType = 16;
 
+  public static final byte CONSTANT_InvokeDynamic = 18;
+
   public static final byte T_BOOLEAN = 4;
 
   public static final byte T_CHAR = 5;
@@ -527,6 +529,8 @@ public interface Constants {
   public static final String TYPE_String = "Ljava/lang/String;";
 
   public static final String TYPE_MethodHandle = "Ljava/lang/invoke/MethodHandle;";
+
+  public static final String TYPE_MethodType = "Ljava/lang/invoke/MethodType;";
 
   public static final String TYPE_Object = "Ljava/lang/Object;";
 

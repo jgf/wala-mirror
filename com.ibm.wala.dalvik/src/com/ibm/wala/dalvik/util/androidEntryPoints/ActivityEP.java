@@ -1,4 +1,13 @@
 /*
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html.
+ * 
+ * This file is a derivative of code released under the terms listed below.  
+ *
+ */
+/*
  *  Copyright (c) 2013,
  *      Tobias Blaschke <code@tobiasblaschke.de>
  *  All rights reserved.
@@ -937,6 +946,17 @@ public final class ActivityEP {
                 }
             ));
 
+    public static final AndroidPossibleEntryPoint onSharedPreferenceChanged = new AndroidPossibleEntryPoint(AndroidComponent.ACTIVITY,
+            "onSharedPreferenceChanged",
+            ExecutionOrder.between( // TODO: Find a nice position
+                new AndroidEntryPoint.IExecutionOrder[] {
+                    onStop
+                },
+                new AndroidEntryPoint.IExecutionOrder[] {
+                    onRestart
+                }
+            ));
+
     /**
      * This method is called before pausing 
      */
@@ -1114,6 +1134,7 @@ public final class ActivityEP {
         possibleEntryPoints.add(onUserLeaveHint);
         possibleEntryPoints.add(onWindowAttributesChanged);
         possibleEntryPoints.add(onWindowFocusChanged);
+        possibleEntryPoints.add(onSharedPreferenceChanged);
 
 	}
 }

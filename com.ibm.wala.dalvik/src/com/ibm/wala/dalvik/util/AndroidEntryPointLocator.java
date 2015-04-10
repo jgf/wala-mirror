@@ -1,4 +1,13 @@
 /*
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html.
+ * 
+ * This file is a derivative of code released under the terms listed below.  
+ *
+ */
+/*
  *  Copyright (c) 2013,
  *      Tobias Blaschke <code@tobiasblaschke.de>
  *  All rights reserved.
@@ -180,6 +189,7 @@ nextMethod:
                     }
                 } else {
                     // Restrict the set
+                    bases.add(AndroidTypes.Handler);
                     bases.add(AndroidTypes.Application);
                     bases.add(AndroidTypes.Activity);
                     /** @todo TODO: add Fragments in getEntryPoints */
@@ -343,7 +353,10 @@ nextMethod:
                     final Collection<IMethod> ifMethods = iFace.getDeclaredMethods();
                     for (final IMethod ifMethod : ifMethods) {
                         final IMethod method = appClass.getMethod(ifMethod.getSelector());
-                        if (method != null && method.getDeclaringClass().getClassLoader().getReference().equals(ClassLoaderReference.Application)) {
+                        if (method == null || method.isAbstract()) {
+                        	continue;
+                        }
+                        if (method.getDeclaringClass().getClassLoader().getReference().equals(ClassLoaderReference.Application)) {
                             // The function is overridden
                             final AndroidEntryPoint ep = new AndroidEntryPoint(selectPositionForHeuristic(method), method, cha);
 

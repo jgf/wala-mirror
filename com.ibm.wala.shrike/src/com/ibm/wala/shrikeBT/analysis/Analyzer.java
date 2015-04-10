@@ -13,16 +13,21 @@ package com.ibm.wala.shrikeBT.analysis;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 
+import com.ibm.wala.shrikeBT.Constants;
 import com.ibm.wala.shrikeBT.DupInstruction;
 import com.ibm.wala.shrikeBT.ExceptionHandler;
 import com.ibm.wala.shrikeBT.IInstruction;
+import com.ibm.wala.shrikeBT.IInvokeInstruction;
+import com.ibm.wala.shrikeBT.IInvokeInstruction.Dispatch;
 import com.ibm.wala.shrikeBT.ILoadInstruction;
 import com.ibm.wala.shrikeBT.IStoreInstruction;
 import com.ibm.wala.shrikeBT.LoadInstruction;
 import com.ibm.wala.shrikeBT.MethodData;
+import com.ibm.wala.shrikeBT.NewInstruction;
 import com.ibm.wala.shrikeBT.StoreInstruction;
 import com.ibm.wala.shrikeBT.SwapInstruction;
 import com.ibm.wala.shrikeBT.Util;
@@ -32,7 +37,13 @@ import com.ibm.wala.shrikeBT.Util;
  */
 public class Analyzer {
 
+  public static final String thisType = "THIS";
+
+  public static final String topType = "TOP";
+
   // inputs
+  final protected boolean isConstructor;
+  
   final protected boolean isStatic;
 
   final protected String classType;
@@ -60,11 +71,15 @@ public class Analyzer {
 
   protected int[][] backEdges;
 
+  protected int[] instToBC;
+
+  protected String[][] varTypes;
+  
   protected final static String[] noStrings = new String[0];
 
   protected final static int[] noEdges = new int[0];
 
-  public Analyzer(boolean isStatic, String classType, String signature, IInstruction[] instructions, ExceptionHandler[][] handlers) {
+  public Analyzer(boolean isConstructor, boolean isStatic, String classType, String signature, IInstruction[] instructions, ExceptionHandler[][] handlers, int[] instToBC, String[][] vars) {
     if (instructions == null) {
       throw new IllegalArgumentException("null instructions");
     }
@@ -77,10 +92,13 @@ public class Analyzer {
       }
     }
     this.classType = classType;
+    this.isConstructor = isConstructor;
     this.isStatic = isStatic;
     this.signature = signature;
     this.instructions = instructions;
     this.handlers = handlers;
+    this.instToBC = instToBC;
+    this.varTypes = vars;
   }
 
   /**
@@ -166,12 +184,57 @@ public class Analyzer {
     return backEdges;
   }
 
+  private String patchType(String t) {
+    if (t == thisType) {
+      return classType;
+    } else if (t != null && t.startsWith("#")) {
+      return stripSharp(t);
+    } else {
+      return t;
+    }
+  }
+  
   final public boolean isSubtypeOf(String t1, String t2) {
-    return ClassHierarchy.isSubtypeOf(hierarchy, t1, t2) != ClassHierarchy.NO;
+    return ClassHierarchy.isSubtypeOf(hierarchy, patchType(t1), patchType(t2)) != ClassHierarchy.NO;
   }
 
+  private boolean isPrimitive(String type) {
+    return type != null && (!type.startsWith("L") && !type.startsWith("["));
+  }
+  
   final public String findCommonSupertype(String t1, String t2) {
-    return ClassHierarchy.findCommonSupertype(hierarchy, t1, t2);
+    if (String.valueOf(t1).equals(String.valueOf(t2))) {
+      return t1;
+    }
+    
+    if (String.valueOf(t1).equals("L;") || String.valueOf(t2).equals("L;")) {
+      System.err.println("++ " + t1 + " -- " + t2 + " ++");
+      if (String.valueOf(t1).equals("L;")) {
+        return t2;
+      } else {
+        return t1;
+      }
+    }
+    
+    if (t1 == thisType || t2 == thisType || t1 == topType || t2 == topType) {
+      return topType;
+    }
+    
+    if (isPrimitive(t1) != isPrimitive(t2)) {
+      return topType;
+    }
+    
+    String x = ClassHierarchy.findCommonSupertype(hierarchy, patchType(t1), patchType(t2));
+
+    if (String.valueOf(t1).contains("groovy/lang/GroovyObject") || String.valueOf(t2).contains("groovy/lang/GroovyObject")) {
+      System.err.println(t1 + " -- " + t2 + " --> " + x); 
+     }
+
+    if ("L?;".equals(x)) {
+      System.err.println(t1 + " -- " + t2);
+    }
+    
+    return x;
   }
 
   final public BitSet getBasicBlockStarts() {
@@ -474,6 +537,16 @@ public class Analyzer {
 
   private boolean mergeTypes(int i, String[] curStack, int curStackSize, String[] curLocals, int curLocalsSize,
       List<PathElement> path) throws FailureException {
+    boolean a = mergeStackTypes(i, curStack, curStackSize, path);
+    boolean b = mergeLocalTypes(i, curLocals, curLocalsSize, path);
+    return a||b;
+  }
+  
+  private boolean longType(String type) {
+    return Constants.TYPE_long.equals(type) || Constants.TYPE_double.equals(type);
+  }
+  
+  private boolean mergeStackTypes(int i, String[] curStack, int curStackSize, List<PathElement> path) throws FailureException {
     boolean changed = false;
 
     if (stacks[i] == null) {
@@ -496,15 +569,27 @@ public class Analyzer {
       }
     }
 
+    return changed;
+  }
+
+  private boolean mergeLocalTypes(int i, String[] curLocals, int curLocalsSize, List<PathElement> path) throws FailureException {
+    boolean changed = false;
+
     if (locals[i] == null) {
       locals[i] = cutArray(curLocals, curLocalsSize);
       changed = true;
     } else {
       String[] ls = locals[i];
-      for (int j = 0; j < ls.length; j++) {
-        String t = findCommonSupertype(ls[j], curLocals[j]);
-        if (t != ls[j]) {
-          ls[j] = t;
+      for (int lj = 0, cj = 0; lj < ls.length; lj++, cj++) {
+        String t = findCommonSupertype(ls[lj], curLocals[cj]);
+        if (t != ls[lj]) {
+          ls[lj] = t;
+          if (longType(curLocals[lj]) != longType(ls[cj])) {
+            System.err.println("merging " + curLocals[cj] + " and " + ls[lj] + " to " + t);
+            if (ls.length > lj+1) {
+              System.err.println("next " + curLocals[cj+1] + " and " + ls[lj+1]);
+            }
+          }
           changed = true;
         }
       }
@@ -513,6 +598,10 @@ public class Analyzer {
     return changed;
   }
 
+  public static String stripSharp(String type) {
+    return type.substring(type.lastIndexOf('#')+1);
+  }
+  
   /**
    * A PathElement describes a point where a value is moved from one location to another.
    */
@@ -532,6 +621,34 @@ public class Analyzer {
       System.arraycopy(locals[i], 0, curLocals, 0, curLocalsSize[0]);
 
       IInstruction.Visitor localsUpdate = new IInstruction.Visitor() {
+        
+        @Override
+        public void visitInvoke(IInvokeInstruction instruction) {
+          if (instruction.getInvocationCode() == Dispatch.SPECIAL) {
+            if (instruction.getMethodName().equals("<init>")) {
+              int sz = Util.getParamsTypes(instruction.getClassType(), instruction.getMethodSignature()).length;
+                
+              if (isConstructor) {
+                if (thisType.equals(curStack[ sz-1 ])) {
+                  for(int i = 0; i < curLocals.length; i++) {
+                    if (thisType.equals(curLocals[i])) {
+                      curLocals[i] = classType;
+                    }
+                  }
+                  for(int i = 0; i < curStack.length; i++) {
+                    if (thisType.equals(curStack[i])) {
+                      curStack[i] = classType;
+                    }
+                  }
+                }
+              }
+              if (curStack.length > sz && curStack[sz] != null && curStack[sz].startsWith("#")) {
+                curStack[sz] = stripSharp(curStack[sz]);
+              }
+            }
+          }
+        }
+
         @Override
         public void visitLocalLoad(ILoadInstruction instruction) {
           String t = curLocals[instruction.getVarIndex()];
@@ -541,9 +658,13 @@ public class Analyzer {
         @Override
         public void visitLocalStore(IStoreInstruction instruction) {
           int index = instruction.getVarIndex();
-          curLocals[index] = curStack[0];
+          String t = curStack[0];
+          curLocals[index] = t;
+          if (longType(t) && curLocals.length > index+1) {
+            curLocals[index+1] = null;
+          }
           if (index >= curLocalsSize[0]) {
-            curLocalsSize[0] = index + 1;
+            curLocalsSize[0] = index + (longType(t) && curLocals.length > index+1? 2: 1);
           }
         }
       };
@@ -578,6 +699,9 @@ public class Analyzer {
           curStack[1] = s;
         } else {
           String pushed = instr.getPushedType(curStack);
+          if (instr instanceof NewInstruction && ! pushed.startsWith("[")) {
+            pushed = "#" + instToBC[i] + "#" + pushed;
+          }
           if (pushed != null) {
             System.arraycopy(curStack, popped, curStack, 1, curStackSize - popped);
             curStack[0] = Util.getStackType(pushed);
@@ -587,11 +711,51 @@ public class Analyzer {
             instr.visit(localsUpdate); // visit localStore before popping
             System.arraycopy(curStack, popped, curStack, 0, curStackSize - popped);
             curStackSize -= popped;
+            
+            if (varTypes != null) {
+            if (instr instanceof IStoreInstruction) {
+              int local = ((IStoreInstruction)instr).getVarIndex();
+              if (Constants.TYPE_null.equals(curLocals[local])) {
+                for(int idx : new int[]{i, i+1}) {
+                  int bc = instToBC[idx];
+                  if (bc == 667 && local == 16) {
+                    System.err.println("got here");
+                  }
+                  if (bc != -1 && varTypes != null && varTypes.length > bc && varTypes[bc] != null) {
+                    if (varTypes[bc].length > local && varTypes[bc][local] != null) {
+                      String declaredType = varTypes[bc][local];
+                      curLocals[local] = declaredType;
+                      
+                      System.err.println("setting local " + local + " to " + declaredType + " at " + instToBC[i] + " in " + classType + " " + signature);
+                    }
+                  }
+                }
+              }
+            }
+            }
           }
         }
 
+        ExceptionHandler[] handler = handlers[i];
+        for(int h = 0; h < handler.length; h++) {
+          int target = handler[h].getHandler();
+          String cls = handler[h].getCatchClass();
+          if (cls == null) {
+            cls = "Ljava/lang/Throwable;";
+          }
+          String[] catchStack = new String[]{ cls };
+          if (mergeTypes(target, catchStack, 1, curLocals, curLocalsSize[0], path)) { 
+            computeTypes(target, visitor, makeTypesAt, path);            
+          }
+        }
+        
+        //System.err.println(i + " -- " + Arrays.toString(curLocals) + " -- " + Arrays.toString(curStack));
+        
         int[] targets = instr.getBranchTargets();
         for (int j = 0; j < targets.length; j++) {
+          if (targets[j] == 29 && classType.contains("MetaClassImpl;") && signature.contains("(Ljava/lang/String;Lorg/codehaus/groovy/reflection/CachedClass;)")) {
+              System.err.println("got here");
+          }
           if (mergeTypes(targets[j], curStack, curStackSize, curLocals, curLocalsSize[0], path)) {
             computeTypes(targets[j], visitor, makeTypesAt, path);
           }
@@ -653,8 +817,22 @@ public class Analyzer {
     stacks = new String[instructions.length][];
     locals = new String[instructions.length][];
 
+    String thisType;
+    if (isConstructor) {
+      thisType = Analyzer.thisType;
+    } else {
+      thisType = classType;
+    }
+    
     stacks[0] = noStrings;
-    locals[0] = Util.getParamsTypesInLocals(isStatic ? null : classType, signature);
+    locals[0] = Util.getParamsTypesInLocals(isStatic ? null : thisType, signature);
+    if (isConstructor) {
+      for(int i = 0; i < locals[0].length; i++) {
+        if (classType.equals(locals[0][i])) {
+          locals[0][i] = thisType;
+        }
+      }
+    }
     int[] stackSizes = getStackSizes();
     maxStack = 0;
     for (int i = 0; i < stackSizes.length; i++) {
@@ -696,7 +874,11 @@ public class Analyzer {
   }
 
   protected Analyzer(MethodData info) {
-    this(info.getIsStatic(), info.getClassType(), info.getSignature(), info.getInstructions(), info.getHandlers());
+    this(info.getName().equals("<init>"), info.getIsStatic(), info.getClassType(), info.getSignature(), info.getInstructions(), info.getHandlers(), info.getInstructionsToBytecodes(), null);
+  }
+
+  protected Analyzer(MethodData info, int[] instToBC, String[][] vars) {
+    this(info.getName().equals("<init>"), info.getIsStatic(), info.getClassType(), info.getSignature(), info.getInstructions(), info.getHandlers(), instToBC, vars);
   }
 
   public static Analyzer createAnalyzer(MethodData info) {

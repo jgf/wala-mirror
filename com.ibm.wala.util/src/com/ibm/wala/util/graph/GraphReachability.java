@@ -24,7 +24,7 @@ import com.ibm.wala.fixpoint.BitVectorVariable;
 import com.ibm.wala.fixpoint.UnaryOperator;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.MonitorUtil.IProgressMonitor;
-import com.ibm.wala.util.collections.Filter;
+import com.ibm.wala.util.Predicate;
 import com.ibm.wala.util.collections.FilterIterator;
 import com.ibm.wala.util.collections.Iterator2Collection;
 import com.ibm.wala.util.debug.Assertions;
@@ -36,7 +36,7 @@ import com.ibm.wala.util.intset.OrdinalSetMapping;
 /**
  * A dataflow system that computes, for each graph node, the set of "interesting" nodes that are reachable
  */
-public class GraphReachability<T, S extends T> {
+public class GraphReachability<T, S> {
 
   /**
    * Governing graph
@@ -58,7 +58,7 @@ public class GraphReachability<T, S extends T> {
    * @param filter "interesting" node definition
    * @throws IllegalArgumentException if g is null
    */
-  public GraphReachability(Graph<T> g, Filter<?> filter) {
+  public GraphReachability(Graph<T> g, Predicate<?> filter) {
     if (g == null) {
       throw new IllegalArgumentException("g is null");
     }

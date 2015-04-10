@@ -27,6 +27,9 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+
+import com.ibm.wala.shrikeBT.analysis.ClassHierarchyProvider;
 
 /**
  * This class provides functionality for performing offline instrumentation. It is subclassed with class-toolkit-specific
@@ -53,6 +56,8 @@ public abstract class OfflineInstrumenterBase {
 
   private ManifestBuilder manifestBuilder;
 
+  protected ClassHierarchyProvider cha;
+  
   /**
    * This installs a ManifestBuilder callback that this class will notify whenever an entry has been added to the output zip file.
    */
@@ -200,8 +205,13 @@ public abstract class OfflineInstrumenterBase {
   }
 
   protected OfflineInstrumenterBase() {
+
   }
 
+  public void setClassHierarchyProvider(ClassHierarchyProvider cha) {
+    this.cha = cha;
+  }
+  
   /**
    * Set the file in which instrumented classes will be deposited.
    */

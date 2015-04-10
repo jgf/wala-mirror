@@ -1,4 +1,13 @@
 /*
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v10.html.
+ * 
+ * This file is a derivative of code released under the terms listed below.  
+ *
+ */
+/*
  *
  * Copyright (c) 2009-2012,
  *
@@ -52,6 +61,9 @@ import static org.jf.dexlib.Util.AccessFlags.VOLATILE;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.jf.dexlib.AnnotationItem;
 import org.jf.dexlib.AnnotationSetItem;
@@ -62,6 +74,7 @@ import org.jf.dexlib.FieldIdItem;
 import org.jf.dexlib.MethodIdItem;
 import org.jf.dexlib.StringIdItem;
 import org.jf.dexlib.TypeIdItem;
+import org.jf.dexlib.Code.InstructionWithReference;
 import org.jf.dexlib.Code.Opcode;
 import org.jf.dexlib.Code.TwoRegisterInstruction;
 import org.jf.dexlib.Code.Format.ArrayDataPseudoInstruction;
@@ -181,9 +194,6 @@ public class DexIMethod implements IBytecodeMethod {
 	public DexIMethod(EncodedMethod encodedMethod, DexIClass klass) {
 		eMethod = encodedMethod;
 		myClass = klass;
-		//XXX TEST
-		//myClass.iterateMethodAnnotations(this);
-
 	}
 
 	public static int getTotalInsts() {
@@ -672,16 +682,18 @@ public class DexIMethod implements IBytecodeMethod {
 		}
 
 
-		//      for (int i = 0; i < instructions().size(); i++) {
-		//          handlers[i] = (ExceptionHandler[])temp_array.get(i).toArray(new ExceptionHandler[temp_array.get(i).size()]);
-		//
-		//          System.out.println("i: " + i);
-		//          for (int j = 0; j < handlers[i].length; j++) {
-		//              System.out.println("\t j: " + j);
-		//              System.out.println("\t\t Handler: " +  handlers[i][j].getHandler());
-		//              System.out.println("\t\t Catch Class: " + handlers[i][j].getCatchClass());
-		//          }
-		//      }
+		for (int i = 0; i < instructions().size(); i++) {
+			handlers[i] = (ExceptionHandler[])temp_array.get(i).toArray(new ExceptionHandler[temp_array.get(i).size()]);
+		
+			/*
+			System.out.println("i: " + i);
+			for (int j = 0; j < handlers[i].length; j++) {
+				System.out.println("\t j: " + j);
+				System.out.println("\t\t Handler: " +  handlers[i][j].getHandler());
+				System.out.println("\t\t Catch Class: " + handlers[i][j].getCatchClass());
+			}
+			*/
+		}
 
 		return handlers;
 	}
@@ -973,7 +985,7 @@ public class DexIMethod implements IBytecodeMethod {
 				break;
 			case MOVE_EXCEPTION:
 				instructions.add(new UnaryOperation(instLoc,
-						UnaryOperation.OpID.MOVE, ((Instruction11x)inst).getRegisterA(),
+						UnaryOperation.OpID.MOVE_EXCEPTION, ((Instruction11x)inst).getRegisterA(),
 						getExceptionReg(), inst.opcode, this));
 				break;
 			case RETURN_VOID:
@@ -1420,10 +1432,10 @@ public class DexIMethod implements IBytecodeMethod {
 			case IPUT_BYTE:
 			case IPUT_CHAR:
 			case IPUT_SHORT: {
-				logger.debug(inst.opcode.toString() + " class: "+((FieldIdItem)((Instruction22c)inst).getReferencedItem()).getContainingClass().getTypeDescriptor() + ", field name: " + ((FieldIdItem)((Instruction22c)inst).getReferencedItem()).getFieldName().getStringValue() + ", field type: " + ((FieldIdItem)((Instruction22c)inst).getReferencedItem()).getFieldType().getTypeDescriptor());
-				String cname = ((FieldIdItem)((Instruction22c)inst).getReferencedItem()).getContainingClass().getTypeDescriptor();
-				String fname = ((FieldIdItem)((Instruction22c)inst).getReferencedItem()).getFieldName().getStringValue();
-				String ftname = ((FieldIdItem)((Instruction22c)inst).getReferencedItem()).getFieldType().getTypeDescriptor();
+				logger.debug(inst.opcode.toString() + " class: "+((FieldIdItem)((InstructionWithReference)inst).getReferencedItem()).getContainingClass().getTypeDescriptor() + ", field name: " + ((FieldIdItem)((InstructionWithReference)inst).getReferencedItem()).getFieldName().getStringValue() + ", field type: " + ((FieldIdItem)((InstructionWithReference)inst).getReferencedItem()).getFieldType().getTypeDescriptor());
+				String cname = ((FieldIdItem)((InstructionWithReference)inst).getReferencedItem()).getContainingClass().getTypeDescriptor();
+				String fname = ((FieldIdItem)((InstructionWithReference)inst).getReferencedItem()).getFieldName().getStringValue();
+				String ftname = ((FieldIdItem)((InstructionWithReference)inst).getReferencedItem()).getFieldType().getTypeDescriptor();
 
 				if (cname.endsWith(";"))
 					cname = cname.substring(0,cname.length()-1);
@@ -1433,7 +1445,7 @@ public class DexIMethod implements IBytecodeMethod {
 					ftname = ftname.substring(0,ftname.length()-1);
 
 				instructions.add(new PutField.PutInstanceField(
-						instLoc, ((Instruction22c)inst).getRegisterA(), ((Instruction22c)inst).getRegisterB(),
+						instLoc, ((TwoRegisterInstruction)inst).getRegisterA(), ((TwoRegisterInstruction)inst).getRegisterB(),
 						cname, fname, ftname, inst.opcode, this));
 				break;
 			}
@@ -3306,17 +3318,15 @@ public class DexIMethod implements IBytecodeMethod {
             return empty;
         }
 
-        assert(false) : "Please review getCallSites-Implementation before use!";        // TODO
+        // assert(false) : "Please review getCallSites-Implementation before use!";        // TODO
 
         ArrayList<CallSiteReference> csites = new ArrayList<CallSiteReference>();
         // XXX The call Sites in this method or to this method?!!!
         for (Instruction inst: instructions()) {
             if (inst instanceof Invoke) {
                 // Locate the Target
-                MethodReference target;
-                ClassLoaderReference loader = ClassLoaderReference.Primordial;
-                target = MethodReference.findOrCreate(
-                    loader,    // XXX: Is this the correct class loader?
+            	MethodReference target = MethodReference.findOrCreate(
+                    getDeclaringClass().getClassLoader().getReference(),    // XXX: Is this the correct class loader?
                     ((Invoke)inst).clazzName,
                     ((Invoke)inst).methodName,
                     ((Invoke)inst).descriptor );
@@ -3347,7 +3357,24 @@ public class DexIMethod implements IBytecodeMethod {
 
 	@Override
 	public Collection<Annotation> getAnnotations() {
-		throw new UnsupportedOperationException();
+		return DexUtil.getAnnotations(myClass.getAnnotations(eMethod.method, null), myClass.getClassLoader().getReference());
 	}
 
+	@Override
+	public Collection<Annotation> getAnnotations(boolean runtimeInvisible) {
+		return DexUtil.getAnnotations(myClass.getAnnotations(eMethod.method, DexIClass.getTypes(runtimeInvisible)), myClass.getClassLoader().getReference());
+	}
+
+	@Override
+	public Collection<Annotation>[] getParameterAnnotations() {
+		Map<Integer, List<AnnotationItem>> raw = myClass.getParameterAnnotations(eMethod.method);
+		@SuppressWarnings("unchecked")
+		Collection<Annotation>[] result = new Collection[ getReference().getNumberOfParameters() ];
+		for(Map.Entry<Integer, List<AnnotationItem>> x : raw.entrySet()) {
+			result[x.getKey()] = DexUtil.getAnnotations(x.getValue(), myClass.getClassLoader().getReference());
+		}
+		return result;
+	}
+
+	
 }

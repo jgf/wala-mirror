@@ -37,13 +37,13 @@ public interface PointerAnalysis<T extends InstanceKey> {
   /**
    * @return a graph view of the pointer analysis solution
    */
-  HeapGraph getHeapGraph();
+  HeapGraph<T> getHeapGraph();
   
   /**
    * @return the bijection between InstanceKey <=> Integer that defines the
    * interpretation of points-to-sets.
    */
-  OrdinalSetMapping<InstanceKey> getInstanceKeyMapping();
+  OrdinalSetMapping<T> getInstanceKeyMapping();
 
   /**
    * @return all pointer keys known
@@ -54,7 +54,7 @@ public interface PointerAnalysis<T extends InstanceKey> {
   /**
    * @return all instance keys known
    */
-  Collection<InstanceKey> getInstanceKeys();
+  Collection<T> getInstanceKeys();
 
   /**
    * did the pointer analysis use a type filter for a given points-to set?

@@ -440,4 +440,16 @@ public class FakeExceptionTypeBinding implements ITypeBinding {
     return 0;
   }
 
+  // do not put @Override here, to avoid breaking compilation on Juno
+  public IMethodBinding getFunctionalInterfaceMethod() {
+    Assertions.UNREACHABLE("FakeExceptionTypeBinding ");
+    return null;
+  }
+
+  // do not put @Override here, to avoid breaking compilation on Juno
+  public IAnnotationBinding[] getTypeAnnotations() {
+    Assertions.UNREACHABLE("FakeExceptionTypeBinding ");
+    return null;
+  }
+
 }

@@ -35,6 +35,7 @@ import com.ibm.wala.shrikeBT.IShiftInstruction;
 import com.ibm.wala.shrikeBT.IStoreInstruction;
 import com.ibm.wala.shrikeBT.ITypeTestInstruction;
 import com.ibm.wala.shrikeBT.IUnaryOpInstruction;
+import com.ibm.wala.shrikeBT.InvokeDynamicInstruction;
 import com.ibm.wala.shrikeBT.MethodData;
 import com.ibm.wala.shrikeBT.MonitorInstruction;
 import com.ibm.wala.shrikeBT.NewInstruction;
@@ -231,11 +232,15 @@ public final class Verifier extends Analyzer {
 
     @Override
     public void visitInvoke(IInvokeInstruction instruction) {
+      if (instruction instanceof InvokeDynamicInstruction) {
+        return;
+      }
+      
       // make sure constant pool entries are dereferenced
       String classType = instruction.getClassType();
       String signature = instruction.getMethodSignature();
 
-      String thisClass = instruction.getInvocationCode() == IInvokeInstruction.Dispatch.STATIC ? null : classType;
+      String thisClass = instruction.getInvocationCode() == IInvokeInstruction.Dispatch.STATIC ? null : classType;            
       String[] params = Util.getParamsTypes(thisClass, signature);
 
       for (int i = 0; i < params.length; i++) {
@@ -287,8 +292,8 @@ public final class Verifier extends Analyzer {
   /**
    * Initialize a verifier.
    */
-  public Verifier(boolean isStatic, String classType, String signature, IInstruction[] instructions, ExceptionHandler[][] handlers) {
-    super(isStatic, classType, signature, instructions, handlers);
+  public Verifier(boolean isConstructor, boolean isStatic, String classType, String signature, IInstruction[] instructions, ExceptionHandler[][] handlers, int[] instToBC, String[][] vars) {
+    super(isConstructor, isStatic, classType, signature, instructions, handlers, instToBC, vars);
   }
 
   /**
@@ -298,6 +303,10 @@ public final class Verifier extends Analyzer {
    */
   public Verifier(MethodData info) throws NullPointerException {
     super(info);
+  }
+
+  public Verifier(MethodData info, int[] instToBC, String[][] vars) throws NullPointerException {
+    super(info, instToBC, vars);
   }
 
   /**
