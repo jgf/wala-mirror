@@ -771,7 +771,7 @@ public class DexSSABuilder extends AbstractIntRegisterMachine {
              */
             @Override
             public void visitGoto(Goto instruction) {
-                emitInstruction(insts.GotoInstruction(getCurrentInstructionIndex(), -1));
+                emitInstruction(insts.GotoInstruction(getCurrentInstructionIndex(), instruction.destination));
             }
 
             /**
