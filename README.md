@@ -1,3 +1,7 @@
+# Please note: 
+
+This fork of WALA is only present due to legacy reasons! Most of the features mentioned below have already been integrated into the main WALA repository or will be integrated soon. JOANA uses a <a href="http://github.com/mohrm/WALA>new fork</a> (which is really a fork)!
+
 # About WALA
 
 This is a fork of the program analysis framework WALA. The original framework can be found at <a href="http://wala.sourceforge.net">wala.sourceforge.net</a> and <a href="https://github.com/wala/WALA">github.com/wala/WALA</a>.
