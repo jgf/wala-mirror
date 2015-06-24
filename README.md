@@ -1,7 +1,7 @@
 # Please note: 
 
 This fork of WALA is only present due to legacy reasons! Most of the features mentioned below have already been integrated into the main WALA repository or will be integrated soon. 
-JOANA uses a <a href="http://github.com/mohrm/WALA>new fork</a> now (which is really a fork)!
+JOANA uses a <a href="http://github.com/mohrm/WALA">new fork</a> now (which is really a fork)!
 
 # About WALA
 
